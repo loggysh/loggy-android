@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun channel(): ManagedChannel {
-        val url = URL("http://192.168.1.7:50111")
+        val url = URL("http://10.0.2.2:50111")
         val port = if (url.port == -1) url.defaultPort else url.port
 
         Timber.i("Connecting to ${url.host}:$port")
