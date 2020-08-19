@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Loggy</string>
+    <string name="first">First</string>
+    <string name="third">Third</string>
+    <string name="second">Second</string>
+    <string name="go_to_second">Go to Second</string>
+    <string name="go_to_third">Go to Third</string>
+    <string name="go_to_first">Go to First</string>
 </resources>

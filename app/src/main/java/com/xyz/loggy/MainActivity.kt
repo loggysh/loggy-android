@@ -2,13 +2,18 @@ package com.xyz.loggy
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import com.xyz.loggy.databinding.ActivityMainBinding
+import com.xyz.loggy.ui.MainViewModel
+import com.xyz.loggy.ui.ViewIntention
 import timber.log.Timber
 import kotlin.concurrent.fixedRateTimer
 
 class MainActivity : AppCompatActivity() {
 
+    private val viewModel: MainViewModel by viewModels()
     lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,6 +21,12 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(LayoutInflater.from(this))
         setContentView(binding.root)
+
+        viewModel.intentions.observe(this, {
+            binding.firstFragmentContainer.isVisible = it == ViewIntention.GoToFirst
+            binding.secondFragmentContainer.isVisible = it == ViewIntention.GoToSecond
+            binding.thirdFragmentContainer.isVisible = it == ViewIntention.GoToThird
+        })
 
         fixedRateTimer("hello", false, 0, 1000) {
             sendMessage()
@@ -25,4 +36,5 @@ class MainActivity : AppCompatActivity() {
     private fun sendMessage() {
         Timber.d("Hello world!!")
     }
+
 }

@@ -70,22 +70,21 @@ class MainApplication : Application() {
             .setId(1)
             .build()
 
-        Timber.d("$instanceId")
-        GlobalScope.launch {
-            try {
-                val instance = Instance.newBuilder()
-                    .setAppid(BuildConfig.APPLICATION_ID)
-                    .setDeviceid(1)
-                    .build()
-
-                val ins = instanceService.insert(instance)
-                Timber.plant(TimberTree(instance, simple))
-                Timber.d("Loggy setup successful")
-            } catch (e: Exception) {
-                Timber.d("Loggy setup failed")
-                Timber.e(e)
-            }
-        }
+//        GlobalScope.launch {
+//            try {
+//                val instance = Instance.newBuilder()
+//                    .setAppid(BuildConfig.APPLICATION_ID)
+//                    .setDeviceid(1)
+//                    .build()
+//
+//                val ins = instanceService.insert(instance)
+//                Timber.plant(TimberTree(instance, simple))
+//                Timber.d("Loggy setup successful")
+//            } catch (e: Exception) {
+//                Timber.d("Loggy setup failed")
+//                Timber.e(e)
+//            }
+//        }
 
         ProcessLifecycleOwner.get().lifecycle.addObserver(ForegroundBackgroundObserver())
     }
