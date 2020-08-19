@@ -5,7 +5,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.OnLifecycleEvent
 import androidx.lifecycle.ProcessLifecycleOwner
-import com.xyz.simple.*
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import kotlinx.coroutines.Dispatchers
@@ -34,57 +33,27 @@ class MainApplication : Application() {
         return builder.executor(Dispatchers.Default.asExecutor()).build()
     }
 
-    private val simple by lazy { SimpleServiceGrpcKt.SimpleServiceCoroutineStub(channel()) }
-    private val applicationService by lazy {
-        ApplicationServiceGrpcKt.ApplicationServiceCoroutineStub(
-            channel()
-        )
-    }
-
-    private val deviceService by lazy {
-        DeviceServiceGrpcKt.DeviceServiceCoroutineStub(
-            channel()
-        )
-    }
-    private val instanceService by lazy {
-        InstanceServiceGrpcKt.InstanceServiceCoroutineStub(
-            channel()
-        )
-    }
+    private val loggy by lazy { LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel()) }
 
     override fun onCreate() {
         super.onCreate()
 
         Timber.plant(Timber.DebugTree())
 
-        val appID = ApplicationId.newBuilder()
-            .setId(BuildConfig.APPLICATION_ID)
-            .build()
-
-        val deviceID = DeviceId.newBuilder()
-            .setId(10)
-            .build()
-
-        val instanceId = InstanceId.newBuilder()
-            .setAppid("Swiggy")
+        val instanceID = InstanceId.newBuilder()
+            .setAppid(BuildConfig.APPLICATION_ID)
             .setId(1)
             .build()
 
-//        GlobalScope.launch {
-//            try {
-//                val instance = Instance.newBuilder()
-//                    .setAppid(BuildConfig.APPLICATION_ID)
-//                    .setDeviceid(1)
-//                    .build()
-//
-//                val ins = instanceService.insert(instance)
-//                Timber.plant(TimberTree(instance, simple))
-//                Timber.d("Loggy setup successful")
-//            } catch (e: Exception) {
-//                Timber.d("Loggy setup failed")
-//                Timber.e(e)
-//            }
-//        }
+        GlobalScope.launch {
+            try {
+                Timber.plant(TimberTree(instanceID, loggy))
+                Timber.d("Loggy setup successful")
+            } catch (e: Exception) {
+                Timber.d("Loggy setup failed")
+                Timber.e(e)
+            }
+        }
 
         ProcessLifecycleOwner.get().lifecycle.addObserver(ForegroundBackgroundObserver())
     }

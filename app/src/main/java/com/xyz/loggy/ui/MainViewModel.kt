@@ -2,6 +2,7 @@ package com.xyz.loggy.ui
 
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import timber.log.Timber
 
 sealed class ViewIntention {
     object GoToFirst : ViewIntention()
@@ -15,5 +16,6 @@ class MainViewModel : ViewModel() {
 
     fun interpret(intention: ViewIntention) {
         intentions.value = intention
+        Timber.d("$intention")
     }
 }

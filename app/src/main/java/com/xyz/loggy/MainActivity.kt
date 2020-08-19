@@ -8,8 +8,6 @@ import androidx.core.view.isVisible
 import com.xyz.loggy.databinding.ActivityMainBinding
 import com.xyz.loggy.ui.MainViewModel
 import com.xyz.loggy.ui.ViewIntention
-import timber.log.Timber
-import kotlin.concurrent.fixedRateTimer
 
 class MainActivity : AppCompatActivity() {
 
@@ -27,14 +25,5 @@ class MainActivity : AppCompatActivity() {
             binding.secondFragmentContainer.isVisible = it == ViewIntention.GoToSecond
             binding.thirdFragmentContainer.isVisible = it == ViewIntention.GoToThird
         })
-
-        fixedRateTimer("hello", false, 0, 1000) {
-            sendMessage()
-        }
     }
-
-    private fun sendMessage() {
-        Timber.d("Hello world!!")
-    }
-
 }
