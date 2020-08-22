@@ -12,12 +12,18 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import loggy.sh.loggy.BuildConfig
-import sh.loggy.*
+import sh.loggy.Device
+import sh.loggy.Instance
+import sh.loggy.LoggyMessage
+import sh.loggy.LoggyServiceGrpcKt
 import timber.log.Timber
 import java.net.URL
 import java.util.*
-
 
 object Loggy {
 
@@ -43,25 +49,41 @@ object Loggy {
 
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
     private var sessionID: String = ""
-    private var instanceID: InstanceId? = null
-    private var deviceID: DeviceId? = null
+    private var instanceID: String? = null
+    private var deviceID: String? = null
 
     suspend fun setup(application: Application, config: LoggyConfig) {
 
-        val instance: Instance = Instance.newBuilder()
-            .setAppid(config.appID)
-            .setDeviceid(config.uniqueDeviceID)
-            .build()
-
-        val device: Device = Device.newBuilder()
-            .setId(config.uniqueDeviceID)
-            .putAllDetails(deviceInformation(application))
-            .build()
-
         withContext(Dispatchers.IO) {
+            instanceID = getInstanceId(application)
+            deviceID = getDeviceId(application)
+
             try {
-                instanceID = loggyService.insertInstance(instance)
-                deviceID = loggyService.insertDevice(device)
+                if (instanceID == null) {
+                    val instance: Instance = Instance.newBuilder()
+                        .setAppid(config.appID)
+                        .setDeviceid(config.uniqueDeviceID)
+                        .build()
+
+                    instanceID = loggyService.insertInstance(instance).id.also {
+                        saveInstance(application, it)
+                    }
+                } else {
+                    // Instance Id is unique. Once created. Save and restore.
+                }
+
+                if (deviceID == null) {
+                    val device: Device = Device.newBuilder()
+                        .setId(config.uniqueDeviceID)
+                        .setDetails(deviceInformation(application))
+                        .build()
+
+                    deviceID = loggyService.insertDevice(device).id.also {
+                        saveDevice(application, it)
+                    }
+                } else {
+                    // Device Id is unique. Once created. Save and restore.
+                }
             } catch (e: Exception) {
                 Log.e("Loggy", "Failed to setup loggy", e)
             }
@@ -83,7 +105,7 @@ object Loggy {
         sessionID = ""
     }
 
-    private fun deviceInformation(context: Context): Map<String, String> {
+    private fun deviceInformation(context: Context): String {
         val map: MutableMap<String, String> = mutableMapOf()
 
         try {
@@ -105,7 +127,11 @@ object Loggy {
             Log.e("Loggy", "Failed", e)
         }
 
-        return map
+        val jsonMap: Map<String, JsonElement> = map.mapValues { s -> JsonPrimitive(s.value) }
+        return Json { isLenient = true }.encodeToString(
+            JsonObject.serializer(),
+            JsonObject(jsonMap)
+        )
     }
 
     fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
@@ -121,14 +147,35 @@ object Loggy {
         val msg = "${tag ?: ""} \n $message $exception"
         val loggyMessage = LoggyMessage
             .newBuilder()
-            .setInstanceid(instance.id)
+            .setInstanceid(instanceID)
             .setLevel(level)
             .setMsg(msg)
             .setSessionid(sessionID)
             .setTimestamp(Timestamp.getDefaultInstance())
             .build()
 
+        Log.d("Loggy ${instanceID}", message)
         messageChannel.offer(loggyMessage)
+    }
+
+    private fun saveInstance(context: Context, instanceId: String) {
+        val preferences = context.getSharedPreferences("loggy", Context.MODE_PRIVATE)
+        preferences.edit().putString("instance_id", instanceId).apply()
+    }
+
+    private fun getInstanceId(context: Context): String? {
+        val preferences = context.getSharedPreferences("loggy", Context.MODE_PRIVATE)
+        return preferences.getString("instance_id", null)
+    }
+
+    private fun getDeviceId(context: Context): String? {
+        val preferences = context.getSharedPreferences("loggy", Context.MODE_PRIVATE)
+        return preferences.getString("device_id", null)
+    }
+
+    private fun saveDevice(context: Context, deviceId: String) {
+        val preferences = context.getSharedPreferences("loggy", Context.MODE_PRIVATE)
+        preferences.edit().putString("device_id", deviceId).apply()
     }
 
 }

@@ -2,10 +2,10 @@ package loggy.sh.sample
 
 import android.annotation.SuppressLint
 import android.app.Application
-import android.provider.Settings
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.OnLifecycleEvent
+import androidx.lifecycle.ProcessLifecycleOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -16,31 +16,25 @@ import timber.log.Timber
 
 class MainApplication : Application() {
 
-    val scope = CoroutineScope(Dispatchers.Main)
+    private val scope = CoroutineScope(Dispatchers.Main)
 
     @SuppressLint("HardwareIds")
     override fun onCreate() {
         super.onCreate()
 
         Timber.plant(Timber.DebugTree())
-
-        /**
-         * Avoid using hardware ids.
-         * User FirebaseInstanceID
-         * or and application level UUID
-         */
-        val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-
         scope.launch {
             Loggy.setup(
                 this@MainApplication,
                 LoggyConfig(
-                    appID = BuildConfig.APPLICATION_ID,
-                    uniqueDeviceID = androidId
+                    appID = "e7315338-f2fc-4d17-8a53-d1d8f85b93db",
+                    uniqueDeviceID = "5004b715-442d-4bb8-8078-3bd8bab190aa"
                 )
             )
             Timber.plant(LoggyTree())
         }
+
+        ProcessLifecycleOwner.get().lifecycle.addObserver(ForegroundBackgroundObserver())
     }
 }
 
