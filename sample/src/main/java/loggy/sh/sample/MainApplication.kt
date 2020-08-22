@@ -27,8 +27,8 @@ class MainApplication : Application() {
             Loggy.setup(
                 this@MainApplication,
                 LoggyConfig(
-                    appID = "e7315338-f2fc-4d17-8a53-d1d8f85b93db",
-                    uniqueDeviceID = "5004b715-442d-4bb8-8078-3bd8bab190aa"
+                    appID = "4d975364-0181-43b8-bbc4-567ff50cc85e",
+                    uniqueDeviceID = "5004b715-442d-4bb8-8078-3bd8bab1cccc"
                 )
             )
             Timber.plant(LoggyTree())
@@ -47,8 +47,8 @@ class ForegroundBackgroundObserver : LifecycleObserver {
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
     fun start() {
-        Timber.d("Application Foreground")
         Loggy.startSession()
+        Timber.d("Application Foreground")
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_STOP)

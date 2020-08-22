@@ -65,9 +65,14 @@ object Loggy {
                         .setDeviceid(config.uniqueDeviceID)
                         .build()
 
-                    instanceID = loggyService.insertInstance(instance).id.also {
-                        saveInstance(application, it)
-                    }
+                    loggyService.insertInstance(instance)
+                        .runCatching {
+                            instanceID = this.id
+                            saveInstance(application, this.id)
+                        }
+                        .onFailure {
+
+                        }
                 } else {
                     // Instance Id is unique. Once created. Save and restore.
                 }
@@ -78,9 +83,14 @@ object Loggy {
                         .setDetails(deviceInformation(application))
                         .build()
 
-                    deviceID = loggyService.insertDevice(device).id.also {
-                        saveDevice(application, it)
-                    }
+                    loggyService.insertDevice(device)
+                        .runCatching {
+                            deviceID = this.id
+                            saveDevice(application, this.id)
+                        }
+                        .onFailure {
+                            // Device already exists. Ignore
+                        }
                 } else {
                     // Device Id is unique. Once created. Save and restore.
                 }
@@ -135,7 +145,6 @@ object Loggy {
     }
 
     fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
-        val instance = instanceID ?: return
         val level = when (priority) {
             Log.VERBOSE, Log.ASSERT, Log.DEBUG -> LoggyMessage.Level.DEBUG
             Log.ERROR -> LoggyMessage.Level.ERROR
