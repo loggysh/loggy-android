@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/tuxcanfly/loggy/loggy;loggy";
+option java_multiple_files = true;
+option java_package = "sh.loggy";
+option java_outer_classname = "LoggyProto";
+
+package loggy;
+
+message Application {
+  string id = 1;
+  string name = 2;
+  string icon = 4;
+}
+
+message ApplicationId {
+  string id = 1;
+}
+
+message ApplicationList {
+  repeated Application apps = 1;
+}
+
+message Device {
+  string id = 1;
+  map<string, string> details = 2;
+}
+
+message DeviceId {
+  string id = 1;
+}
+
+message Instance {
+  string id = 1;
+  string deviceid = 2;
+  string appid = 3;
+}
+
+message InstanceId {
+  string id = 1;
+  string appid = 2;
+}
+
+message ReceiverId {
+  string id = 1;
+}
+
+message LoggyMessage {
+  string instanceid = 1;
+  string sessionid = 2;
+  string msg = 3;
+  google.protobuf.Timestamp timestamp = 4;
+  enum Level {
+    DEBUG = 0;
+    INFO = 1;
+    WARN = 2;
+    ERROR = 3;
+    CRASH = 4;
+  }
+  Level level = 5;
+}
+
+service LoggyService {
+  rpc GetApplication (ApplicationId) returns (Application) {}
+  rpc InsertApplication (Application) returns (ApplicationId) {}
+
+  rpc GetDevice (DeviceId) returns (Device) {}
+  rpc InsertDevice (Device) returns (DeviceId) {}
+
+  rpc GetInstance (InstanceId) returns (Instance) {}
+  rpc InsertInstance (Instance) returns (InstanceId) {}
+
+  rpc Send (stream LoggyMessage) returns (google.protobuf.Empty) {}
+  rpc Register (InstanceId) returns (ReceiverId) {}
+  rpc Receive (ReceiverId) returns (stream LoggyMessage) {}
+}

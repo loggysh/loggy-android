@@ -1,2 +1,3 @@
-include ':app'
+include ':sample'
+include ':loggy-library'
 rootProject.name = "Loggy"
