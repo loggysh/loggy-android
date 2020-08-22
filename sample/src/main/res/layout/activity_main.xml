@@ -6,6 +6,24 @@
     android:layout_height="match_parent"
     tools:context=".ui.MainActivity">
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/nonFatal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/non_fatal"
+        app:layout_constraintEnd_toStartOf="@id/fatal"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/fatal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/fatal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/nonFatal"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/firstFragmentContainer"
         android:name="loggy.sh.sample.ui.FirstFragment"
@@ -16,7 +34,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/nonFatal" />
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/secondFragmentContainer"
@@ -29,8 +47,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
+        app:layout_constraintTop_toBottomOf="@id/nonFatal" />
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/thirdFragmentContainer"
@@ -43,6 +60,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/nonFatal" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
