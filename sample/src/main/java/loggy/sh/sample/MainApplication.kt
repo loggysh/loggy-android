@@ -13,6 +13,7 @@ import loggy.sh.Loggy
 import loggy.sh.LoggyConfig
 import loggy.sh.loggy.sample.LoggyTree
 import timber.log.Timber
+import java.util.*
 
 class MainApplication : Application() {
 
@@ -27,8 +28,8 @@ class MainApplication : Application() {
             Loggy.setup(
                 this@MainApplication,
                 LoggyConfig(
-                    appID = "4d975364-0181-43b8-bbc4-567ff50cc85e",
-                    uniqueDeviceID = "5004b715-442d-4bb8-8078-3bd8bab1cccc"
+                    appID = "359cb1ff-06eb-43ff-b3a2-8075f316c9ea",
+                    uniqueDeviceID = "5004b715-442d-4bb8-8078-3bd8bab1ccdd"
                 )
             )
             Timber.plant(LoggyTree())
