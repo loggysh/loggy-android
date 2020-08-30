@@ -26,11 +26,7 @@ class MainApplication : Application() {
         Timber.plant(Timber.DebugTree())
         scope.launch {
             Loggy.setup(
-                this@MainApplication,
-                LoggyConfig(
-                    appID = "359cb1ff-06eb-43ff-b3a2-8075f316c9ea",
-                    uniqueDeviceID = "5004b715-442d-4bb8-8078-3bd8bab1ccdd"
-                )
+                this@MainApplication
             )
             Timber.plant(LoggyTree())
         }

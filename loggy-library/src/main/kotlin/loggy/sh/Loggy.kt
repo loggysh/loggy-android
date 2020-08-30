@@ -19,9 +19,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import loggy.sh.loggy.BuildConfig
 import sh.loggy.Device
-import sh.loggy.Instance
-import sh.loggy.LoggyMessage
 import sh.loggy.LoggyServiceGrpcKt
+import sh.loggy.Message
+import sh.loggy.Session
 import timber.log.Timber
 import java.net.URL
 import java.time.Instant
@@ -48,67 +48,59 @@ object Loggy {
         return builder.executor(Dispatchers.Default.asExecutor()).build()
     }
 
-    private val messageChannel = BroadcastChannel<LoggyMessage>(Channel.BUFFERED)
+    private val messageChannel = BroadcastChannel<Message>(Channel.BUFFERED)
 
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
-    private var sessionID: String = ""
-    private var instanceID: String? = null
+    private var sessionID: Int = -1
     private var deviceID: String? = null
 
-    suspend fun setup(application: Application, config: LoggyConfig) {
+    suspend fun setup(application: Application) {
 
         withContext(Dispatchers.IO) {
-            instanceID = getInstanceId(application)
             deviceID = getDeviceId(application)
 
-            try {
-                if (instanceID == null) {
+            val packageName = application.packageName
+            val stringId = application.applicationInfo.labelRes
+            val appName =
+                if (stringId == 0) application.applicationInfo.nonLocalizedLabel.toString() else application.getString(
+                    stringId
+                )
 
-                } else {
-                    // Instance Id is unique. Once created. Save and restore.
-                }
+            try {
+                Log.d("Loggy", "Register For Application")
+                val app = loggyService.getOrInsertApplication(
+                    sh.loggy.Application.newBuilder()
+                        .setIcon("")
+                        .setId(packageName)
+                        .setName(appName)
+                        .build()
+                )
 
                 if (deviceID == null) {
-                    Log.d("Loggy", "Register New Device")
-                    val device: Device = Device.newBuilder()
-                        .setId(config.uniqueDeviceID)
-                        .setDetails(deviceInformation(application))
-                        .build()
-
-                    loggyService.insertDevice(device)
-                        .runCatching {
-                            deviceID = this.id
-                            saveDevice(application, this.id)
-                        }
-                        .onFailure {
-                            // Device already exists. Ignore
-                        }
-                } else {
-                    Log.d("Loggy", "Device exists $deviceID")
-                    // Device Id is unique. Once created. Save and restore.
+                    deviceID = UUID.randomUUID().toString()
                 }
 
+                Log.d("Loggy", "Register New Device")
+                val device = loggyService.getOrInsertDevice(
+                    Device.newBuilder()
+                        .setId(deviceID)
+                        .setDetails(deviceInformation(application))
+                        .build()
+                )
+                deviceID = device.id
+                saveDevice(application, device.id)
 
-                val instance: Instance = Instance.newBuilder()
-                    .setAppid(config.appID)
-                    .setDeviceid(deviceID)
-                    .build()
+                Log.d("Loggy", "Register For Session")
+                val session = loggyService.insertSession(
+                    Session.newBuilder()
+                        .setAppid(app.id)
+                        .setDeviceid(deviceID)
+                        .build()
+                )
 
-                Log.d("Loggy", "Get or create instance")
-                loggyService.getOrInsertInstance(instance)
-                    .runCatching {
-                        Log.d("Loggy", "Start Register Send")
-                        loggyService.registerSend(this)
-                            .runCatching {
-                                Log.d("Loggy", "Register Send")
-                            }
-                        delay(1000)
-                        instanceID = this.id
-                        saveInstance(application, this.id)
-                    }
-                    .onFailure {
-
-                    }
+                sessionID = session.id
+                Log.d("Loggy", "Register Send")
+                loggyService.registerSend(session)
             } catch (e: Exception) {
                 Log.e("Loggy", "Failed to setup loggy", e)
             }
@@ -116,7 +108,6 @@ object Loggy {
     }
 
     fun startSession() {
-        sessionID = UUID.randomUUID().toString()
         scope.launch {
             try {
                 loggyService.send(messageChannel.asFlow())
@@ -127,7 +118,7 @@ object Loggy {
     }
 
     fun endSession() {
-        sessionID = ""
+
     }
 
     private fun deviceInformation(context: Context): String {
@@ -162,11 +153,11 @@ object Loggy {
     @RequiresApi(Build.VERSION_CODES.O)
     fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
         val level = when (priority) {
-            Log.VERBOSE, Log.ASSERT, Log.DEBUG -> LoggyMessage.Level.DEBUG
-            Log.ERROR -> LoggyMessage.Level.ERROR
-            Log.WARN -> LoggyMessage.Level.WARN
-            Log.INFO -> LoggyMessage.Level.INFO
-            else -> LoggyMessage.Level.DEBUG
+            Log.VERBOSE, Log.ASSERT, Log.DEBUG -> Message.Level.DEBUG
+            Log.ERROR -> Message.Level.ERROR
+            Log.WARN -> Message.Level.WARN
+            Log.INFO -> Message.Level.INFO
+            else -> Message.Level.DEBUG
         }
         val exception = if (t != null) "\n ${t.message} ${t.cause} ${t.stackTrace}" else ""
         val msg = "${tag ?: "TAG"} \n $message $exception"
@@ -174,16 +165,15 @@ object Loggy {
         val timestamp = Timestamp.newBuilder().setSeconds(time.epochSecond)
             .setNanos(time.nano).build()
 
-        val loggyMessage = LoggyMessage
+        val loggyMessage = Message
             .newBuilder()
-            .setInstanceid(instanceID)
             .setLevel(level)
             .setMsg(msg)
             .setSessionid(sessionID)
             .setTimestamp(timestamp)
             .build()
 
-        Log.d("Loggy ${instanceID}", message)
+        Log.d("Loggy ${sessionID}", message)
         messageChannel.offer(loggyMessage)
     }
 
