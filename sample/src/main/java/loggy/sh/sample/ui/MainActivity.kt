@@ -6,7 +6,6 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import loggy.sh.sample.databinding.ActivityMainBinding
-import timber.log.Timber
 
 class MainActivity : AppCompatActivity() {
 
@@ -24,15 +23,5 @@ class MainActivity : AppCompatActivity() {
             binding.secondFragmentContainer.isVisible = it == ViewIntention.GoToSecond
             binding.thirdFragmentContainer.isVisible = it == ViewIntention.GoToThird
         })
-
-        with(binding) {
-            nonFatal.setOnClickListener {
-                Timber.e(IllegalArgumentException("Its illegal to use this argument. You are advised to remain calm."))
-            }
-
-            fatal.setOnClickListener {
-                throw IllegalArgumentException("You are going to Jail!!")
-            }
-        }
     }
 }

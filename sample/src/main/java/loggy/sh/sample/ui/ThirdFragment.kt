@@ -6,6 +6,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import loggy.sh.sample.R
 import loggy.sh.sample.databinding.MainThirdFragmentBinding
+import timber.log.Timber
 
 class ThirdFragment : Fragment(R.layout.main_third_fragment) {
 
@@ -23,6 +24,14 @@ class ThirdFragment : Fragment(R.layout.main_third_fragment) {
 
             buttonGoToFirst.setOnClickListener {
                 viewModel.interpret(ViewIntention.GoToFirst)
+            }
+
+            nonFatal.setOnClickListener {
+                Timber.e(IllegalArgumentException("Failed in Third Fragment"))
+            }
+
+            fatal.setOnClickListener {
+                throw IllegalArgumentException("fatal")
             }
         }
     }
