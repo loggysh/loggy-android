@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
+import loggy.sh.Loggy
 import loggy.sh.sample.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -23,5 +24,11 @@ class MainActivity : AppCompatActivity() {
             binding.secondFragmentContainer.isVisible = it == ViewIntention.GoToSecond
             binding.thirdFragmentContainer.isVisible = it == ViewIntention.GoToThird
         })
+        Loggy.startFeature("feature:home")
+    }
+
+    override fun onDestroy() {
+        Loggy.endFeature("feature:home")
+        super.onDestroy()
     }
 }
