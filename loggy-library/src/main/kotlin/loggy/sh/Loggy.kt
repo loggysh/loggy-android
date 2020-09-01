@@ -27,6 +27,7 @@ import java.net.URL
 import java.time.Instant
 import java.time.ZoneId
 import java.util.*
+import kotlin.system.exitProcess
 
 object Loggy {
 
@@ -53,8 +54,15 @@ object Loggy {
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
     private var sessionID: Int = -1
     private var deviceID: String? = null
+    private var feature: String? = null
 
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun setup(application: Application) {
+
+        Thread.setDefaultUncaughtExceptionHandler { thread, e ->
+            log(100, "Thread: ${thread.name}", "Failed", e)
+            exitProcess(1)
+        }
 
         withContext(Dispatchers.IO) {
             deviceID = getDeviceId(application)
@@ -121,6 +129,14 @@ object Loggy {
 
     }
 
+    fun startFeature(value: String) {
+        feature = value
+    }
+
+    fun endFeature(value: String) {
+        feature = ""
+    }
+
     private fun deviceInformation(context: Context): String {
         val map: MutableMap<String, String> = mutableMapOf()
 
@@ -157,10 +173,11 @@ object Loggy {
             Log.ERROR -> Message.Level.ERROR
             Log.WARN -> Message.Level.WARN
             Log.INFO -> Message.Level.INFO
+            100 -> Message.Level.CRASH
             else -> Message.Level.DEBUG
         }
         val exception = if (t != null) "\n ${t.message} ${t.cause} ${t.stackTrace}" else ""
-        val msg = "${tag ?: "TAG"} \n $message $exception"
+        val msg = "${feature ?: ""} ${tag ?: ""} \n $message $exception"
         val time: Instant = Instant.now().atZone(ZoneId.of("UTC")).toInstant()
         val timestamp = Timestamp.newBuilder().setSeconds(time.epochSecond)
             .setNanos(time.nano).build()
