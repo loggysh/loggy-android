@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 import com.google.protobuf.Timestamp
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
@@ -56,7 +55,6 @@ object Loggy {
     private var deviceID: String? = null
     private var feature: String? = null
 
-    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun setup(application: Application) {
 
         Thread.setDefaultUncaughtExceptionHandler { thread, e ->
@@ -109,13 +107,15 @@ object Loggy {
                 sessionID = session.id
                 Log.d("Loggy", "Register Send")
                 loggyService.registerSend(session)
+
+                startListeningForMessages()
             } catch (e: Exception) {
                 Log.e("Loggy", "Failed to setup loggy", e)
             }
         }
     }
 
-    fun startSession() {
+    private fun startListeningForMessages() {
         scope.launch {
             try {
                 loggyService.send(messageChannel.asFlow())
@@ -125,8 +125,10 @@ object Loggy {
         }
     }
 
-    fun endSession() {
+    fun startSession() {
+    }
 
+    fun endSession() {
     }
 
     fun startFeature(value: String) {
@@ -166,7 +168,6 @@ object Loggy {
         )
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
         val level = when (priority) {
             Log.VERBOSE, Log.ASSERT, Log.DEBUG -> Message.Level.DEBUG
