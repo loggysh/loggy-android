@@ -1,6 +1,5 @@
 package loggy.sh.sample
 
-import android.annotation.SuppressLint
 import android.app.Application
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
@@ -10,16 +9,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import loggy.sh.Loggy
-import loggy.sh.LoggyConfig
 import loggy.sh.loggy.sample.LoggyTree
 import timber.log.Timber
-import java.util.*
 
 class MainApplication : Application() {
 
     private val scope = CoroutineScope(Dispatchers.Main)
 
-    @SuppressLint("HardwareIds")
     override fun onCreate() {
         super.onCreate()
 
