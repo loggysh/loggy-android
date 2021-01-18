@@ -29,11 +29,9 @@ import java.net.URL
 import java.time.Instant
 import java.time.ZoneId
 import java.util.*
-import kotlin.system.exitProcess
+import sh.loggy.Application as LoggyApplication
 
-object Loggy {
-
-    private val loggyService by lazy { LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel) }
+class Loggy {
 
     private val url = URL(BuildConfig.loggyUrl)
     private val port = if (url.port == -1) url.defaultPort else url.port
@@ -48,60 +46,44 @@ object Loggy {
             }
         }.build()
 
+    private val loggyService by lazy { LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel) }
+
     private val messageChannel = BroadcastChannel<Message>(Channel.BUFFERED)
 
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
     private var sessionID: Int = -1
-    private var deviceID: String? = null
+    private lateinit var deviceID: String
     private var feature: String? = null
 
     suspend fun setup(application: Application) {
+        val defaultUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, e ->
             log(100, "Thread: ${thread.name}", "Failed", e)
-            exitProcess(1)
+            defaultUncaughtExceptionHandler?.uncaughtException(thread, e) // Thanks ragunath.
         }
 
         withContext(Dispatchers.IO) {
             deviceID = getDeviceId(application)
 
             val packageName = application.packageName
-            val stringId = application.applicationInfo.labelRes
-            val appName =
-                if (stringId == 0) application.applicationInfo.nonLocalizedLabel.toString() else application.getString(
-                    stringId
-                )
+            val applicationLabelStringId = application.applicationInfo.labelRes
+            val appName = if (applicationLabelStringId == 0) {
+                application.applicationInfo.nonLocalizedLabel.toString()
+            } else {
+                application.getString(applicationLabelStringId)
+            }
 
             try {
                 Log.d("Loggy", "Register For Application")
-                val app = loggyService.getOrInsertApplication(
-                    sh.loggy.Application.newBuilder()
-                        .setIcon("")
-                        .setId(packageName)
-                        .setName(appName)
-                        .build()
-                )
-
-                if (deviceID == null) {
-                    deviceID = UUID.randomUUID().toString()
-                }
+                val loggyApp =
+                    loggyService.getOrInsertApplication(loggyApplication(packageName, appName))
 
                 Log.d("Loggy", "Register New Device")
-                val device = loggyService.getOrInsertDevice(
-                    Device.newBuilder()
-                        .setId(deviceID)
-                        .setDetails(deviceInformation(application))
-                        .build()
-                )
-                deviceID = device.id
+                val device = loggyService.getOrInsertDevice(device(application, deviceID))
                 saveDevice(application, device.id)
 
                 Log.d("Loggy", "Register For Session")
-                val session = loggyService.insertSession(
-                    Session.newBuilder()
-                        .setAppid(app.id)
-                        .setDeviceid(deviceID)
-                        .build()
-                )
+                val session = loggyService.insertSession(session(loggyApp.id, deviceID))
 
                 sessionID = session.id
                 Log.d("Loggy", "Register Send")
@@ -114,10 +96,32 @@ object Loggy {
         }
     }
 
+    private fun session(applicationId: String, deviceID: String): Session =
+        Session.newBuilder()
+            .setAppid(applicationId)
+            .setDeviceid(deviceID)
+            .build()
+
+    private fun device(application: Application, deviceID: String): Device =
+        Device.newBuilder()
+            .setId(deviceID)
+            .setDetails(deviceInformation(application))
+            .build()
+
+    private fun loggyApplication(
+        packageName: String,
+        appName: String
+    ): LoggyApplication =
+        LoggyApplication.newBuilder()
+            .setIcon("")
+            .setId(packageName)
+            .setName(appName)
+            .build()
+
     private fun startListeningForMessages() {
         scope.launch {
             try {
-                loggyService.send(messageChannel.asFlow())
+                loggyService.send(messageChannel.asFlow()) // buffering?
             } catch (e: Exception) {
                 Log.e("Loggy", "Failed to send message", e)
             }
@@ -129,6 +133,9 @@ object Loggy {
 
     fun endSession() {
     }
+
+    // T1 -> startFeature                Event Event endFeature
+    // T2 ->              startFeature                           Event endFeature
 
     fun startFeature(value: String) {
         feature = value
@@ -204,9 +211,9 @@ object Loggy {
         return preferences.getString("instance_id", null)
     }
 
-    private fun getDeviceId(context: Context): String? {
+    private fun getDeviceId(context: Context): String {
         val preferences = context.getSharedPreferences("loggy", Context.MODE_PRIVATE)
-        return preferences.getString("device_id", null)
+        return preferences.getString("device_id", UUID.randomUUID().toString())!!
     }
 
     private fun saveDevice(context: Context, deviceId: String) {
