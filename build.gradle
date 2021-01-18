@@ -11,6 +11,11 @@ buildscript {
         classpath "com.google.protobuf:protobuf-gradle-plugin:0.8.13"
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
+
+        // for maven publish
+        classpath 'com.vanniktech:gradle-maven-publish-plugin:0.13.0'
+        // For Kotlin projects, you need to add Dokka.
+        classpath 'org.jetbrains.dokka:dokka-gradle-plugin:+'
     }
 }
 

@@ -8,10 +8,13 @@ import android.util.Log
 import com.google.protobuf.Timestamp
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -30,23 +33,20 @@ import kotlin.system.exitProcess
 
 object Loggy {
 
-    private val loggyService by lazy { LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel()) }
+    private val loggyService by lazy { LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel) }
 
-    private fun channel(): ManagedChannel {
-        val url = URL(BuildConfig.loggyUrl)
-        val port = if (url.port == -1) url.defaultPort else url.port
+    private val url = URL(BuildConfig.loggyUrl)
+    private val port = if (url.port == -1) url.defaultPort else url.port
 
-        Timber.i("Connecting to ${url.host}:$port")
-
-        val builder = ManagedChannelBuilder.forAddress(url.host, port)
-        if (url.protocol == "https") {
-            builder.useTransportSecurity()
-        } else {
-            builder.usePlaintext()
-        }
-
-        return builder.executor(Dispatchers.Default.asExecutor()).build()
-    }
+    private val channel: ManagedChannel = ManagedChannelBuilder.forAddress(url.host, port)
+        .apply {
+            Timber.i("Connecting to ${url.host}:$port")
+            if (url.protocol == "https") {
+                useTransportSecurity()
+            } else {
+                usePlaintext()
+            }
+        }.build()
 
     private val messageChannel = BroadcastChannel<Message>(Channel.BUFFERED)
 
@@ -56,7 +56,6 @@ object Loggy {
     private var feature: String? = null
 
     suspend fun setup(application: Application) {
-
         Thread.setDefaultUncaughtExceptionHandler { thread, e ->
             log(100, "Thread: ${thread.name}", "Failed", e)
             exitProcess(1)
@@ -191,7 +190,7 @@ object Loggy {
             .setTimestamp(timestamp)
             .build()
 
-        Log.d("Loggy ${sessionID}", message)
+        Log.d("Loggy ${sessionID} State: ${channel.getState(false)}", message)
         messageChannel.offer(loggyMessage)
     }
 
