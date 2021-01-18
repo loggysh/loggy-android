@@ -1,4 +1,4 @@
-package loggy.sh.loggy.sample
+package loggy.sh.sample
 
 import loggy.sh.Loggy
 import timber.log.Timber

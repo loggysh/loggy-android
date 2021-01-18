@@ -9,7 +9,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import loggy.sh.Loggy
-import loggy.sh.loggy.sample.LoggyTree
 import timber.log.Timber
 
 class MainApplication : Application() {
