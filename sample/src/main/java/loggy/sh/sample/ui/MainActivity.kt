@@ -31,7 +31,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        loggy.endFeature("feature:home")
+        loggy.endFeature()
         super.onDestroy()
     }
 }

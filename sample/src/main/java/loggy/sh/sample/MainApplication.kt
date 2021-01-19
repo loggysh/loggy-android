@@ -21,13 +21,11 @@ class MainApplication : Application() {
 
         Timber.plant(Timber.DebugTree())
         scope.launch {
-            loggy.setup(
-                this@MainApplication
-            )
+            loggy.setup(this@MainApplication)
             Timber.plant(LoggyTree(loggy))
         }
 
-        ProcessLifecycleOwner.get().lifecycle.addObserver(ForegroundBackgroundObserver(loggy))
+        ProcessLifecycleOwner.get().lifecycle.addObserver(ForegroundBackgroundObserver())
     }
 
     fun loggyInstance(): Loggy { // TODO: 18/1/21 This needs to go away once we provide a singleton API to access Loggy.
@@ -35,8 +33,7 @@ class MainApplication : Application() {
     }
 }
 
-class ForegroundBackgroundObserver(private val loggy: Loggy) : LifecycleObserver {
-
+class ForegroundBackgroundObserver : LifecycleObserver {
     @OnLifecycleEvent(Lifecycle.Event.ON_CREATE)
     fun create() {
         Timber.d("Application Created")
@@ -44,13 +41,11 @@ class ForegroundBackgroundObserver(private val loggy: Loggy) : LifecycleObserver
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
     fun start() {
-        loggy.startSession()
         Timber.d("Application Foreground")
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
     fun stop() {
         Timber.d("Application Background")
-        loggy.endSession()
     }
 }
