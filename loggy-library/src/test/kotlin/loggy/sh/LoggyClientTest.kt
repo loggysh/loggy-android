@@ -27,6 +27,12 @@ class LoggyClientTest {
         val loggyApp = Application.newBuilder().build()
         val device = Device.newBuilder().build()
 
+        val loggyContext = mock<LoggyContext>()
+        whenever(loggyContext.getApplication())
+            .thenReturn(loggyApp)
+        whenever(loggyContext.getDevice())
+            .thenReturn(device)
+
         whenever(loggyService.getOrInsertApplication(loggyApp))
             .thenReturn(loggyApp.toBuilder().setId(appID).build())
         whenever(loggyService.getOrInsertDevice(device))
@@ -35,7 +41,7 @@ class LoggyClientTest {
             .thenReturn(SessionId.newBuilder().setId(sessionID).build())
 
         // when
-        val session = loggyClient.createSession(device, loggyApp)
+        val session = loggyClient.createSession(loggyContext)
 
         // then
         assertThat(session)
