@@ -13,6 +13,13 @@ import timber.log.Timber
 import java.util.*
 import sh.loggy.Application as LoggyApp
 
+private const val appName = "application_name"
+private const val appVersion = "application_version"
+private const val deviceModel = "device_model"
+private const val deviceType = "device_type"
+private const val androidOSVersion = "android_os_version"
+private const val androidAPILevel = "android_api_level"
+
 class LoggyContextForAndroid(private val application: Application) : LoggyContext {
     override fun getApplication(): LoggyApp {
         val appName = if (application.applicationInfo.labelRes == 0) {
