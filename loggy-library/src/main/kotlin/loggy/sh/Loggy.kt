@@ -55,7 +55,7 @@ object Loggy {
     private var deviceID: String? = null
     private var feature: String? = null
 
-    suspend fun setup(application: Application) {
+    suspend fun setup(application: Application, userID: String, deviceNamePrefix: String) {
         Thread.setDefaultUncaughtExceptionHandler { thread, e ->
             log(100, "Thread: ${thread.name}", "Failed", e)
             exitProcess(1)
@@ -65,6 +65,7 @@ object Loggy {
             deviceID = getDeviceId(application)
 
             val packageName = application.packageName
+            val appID = "$userID/$packageName"
             val stringId = application.applicationInfo.labelRes
             val appName =
                 if (stringId == 0) application.applicationInfo.nonLocalizedLabel.toString() else application.getString(
@@ -76,7 +77,7 @@ object Loggy {
                 val app = loggyService.getOrInsertApplication(
                     sh.loggy.Application.newBuilder()
                         .setIcon("")
-                        .setId(packageName)
+                        .setId(appID)
                         .setName(appName)
                         .build()
                 )
@@ -89,7 +90,7 @@ object Loggy {
                 val device = loggyService.getOrInsertDevice(
                     Device.newBuilder()
                         .setId(deviceID)
-                        .setDetails(deviceInformation(application))
+                        .setDetails(deviceInformation(application, deviceNamePrefix))
                         .build()
                 )
                 deviceID = device.id
@@ -138,7 +139,7 @@ object Loggy {
         feature = ""
     }
 
-    private fun deviceInformation(context: Context): String {
+    private fun deviceInformation(context: Context, deviceNamePrefix: String): String {
         val map: MutableMap<String, String> = mutableMapOf()
 
         try {
@@ -155,7 +156,7 @@ object Loggy {
                 "${System.getProperty("os.version")}(${Build.VERSION.INCREMENTAL})"
             map[androidAPILevel] = "${Build.VERSION.SDK_INT}"
             map[deviceType] = Build.DEVICE
-            map[deviceModel] = "${Build.MODEL} ${Build.PRODUCT}"
+            map[deviceModel] = "$deviceNamePrefix ${Build.MODEL} ${Build.PRODUCT}"
         } catch (e: Exception) {
             Log.e("Loggy", "Failed", e)
         }

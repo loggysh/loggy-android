@@ -21,7 +21,9 @@ class MainApplication : Application() {
         Timber.plant(Timber.DebugTree())
         scope.launch {
             Loggy.setup(
-                this@MainApplication
+                this@MainApplication,
+                "bf0b5b86-62f0-4f87-9312-da3eeeceed0f",
+                "dev - "
             )
             Timber.plant(LoggyTree())
         }
