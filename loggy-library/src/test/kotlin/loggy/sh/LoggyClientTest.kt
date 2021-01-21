@@ -11,6 +11,7 @@ import sh.loggy.Application
 import sh.loggy.Device
 import sh.loggy.LoggyServiceGrpcKt
 import sh.loggy.SessionId
+import java.lang.NullPointerException
 
 class LoggyClientTest {
     @ExperimentalCoroutinesApi
@@ -49,6 +50,28 @@ class LoggyClientTest {
     }
 
     // TODO: 20/1/21 Missing test when #getOrInsertApplication throws an exception.
+    @ExperimentalCoroutinesApi
+    @Test
+    fun `check if get or insert application exceptions are handled`() = runBlockingTest {
+        // TODO: 21/1/21 Test would fail due to crash. Handle by showing passed with crash handled.
+        // given
+
+        val loggyService = mock<LoggyServiceGrpcKt.LoggyServiceCoroutineStub>()
+
+        val loggyApp = Application.newBuilder().build()
+        val device = Device.newBuilder().build()
+
+        val loggyContext = mock<LoggyContext>()
+        whenever(loggyContext.getApplication())
+            .thenReturn(loggyApp)
+        whenever(loggyContext.getDevice())
+            .thenReturn(device)
+
+        whenever(loggyService.getOrInsertApplication(loggyApp))
+            .thenThrow(NullPointerException("Get of Insert failed"))
+
+    }
+
     // TODO: 20/1/21 Missing test when #getOrInsertDevice throws an exception.
     // TODO: 20/1/21 Missing test when #insertSession throws an exception.
 }
