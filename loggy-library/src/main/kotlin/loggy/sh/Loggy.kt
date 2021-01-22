@@ -55,7 +55,7 @@ object Loggy {
     private var deviceID: String? = null
     private var feature: String? = null
 
-    suspend fun setup(application: Application, userID: String, deviceNamePrefix: String) {
+    suspend fun setup(application: Application, userID: String, deviceName: String = "") {
         Thread.setDefaultUncaughtExceptionHandler { thread, e ->
             log(100, "Thread: ${thread.name}", "Failed", e)
             exitProcess(1)
@@ -90,7 +90,7 @@ object Loggy {
                 val device = loggyService.getOrInsertDevice(
                     Device.newBuilder()
                         .setId(deviceID)
-                        .setDetails(deviceInformation(application, deviceNamePrefix))
+                        .setDetails(deviceInformation(application, deviceName))
                         .build()
                 )
                 deviceID = device.id
@@ -139,10 +139,11 @@ object Loggy {
         feature = ""
     }
 
-    private fun deviceInformation(context: Context, deviceNamePrefix: String): String {
+    private fun deviceInformation(context: Context, deviceName: String): String {
         val map: MutableMap<String, String> = mutableMapOf()
 
         try {
+            map[deviceUniqueName] = deviceName
             val applicationInfo = context.applicationInfo
             val stringId = applicationInfo.labelRes
             map[appName] =
@@ -156,7 +157,7 @@ object Loggy {
                 "${System.getProperty("os.version")}(${Build.VERSION.INCREMENTAL})"
             map[androidAPILevel] = "${Build.VERSION.SDK_INT}"
             map[deviceType] = Build.DEVICE
-            map[deviceModel] = "$deviceNamePrefix ${Build.MODEL} ${Build.PRODUCT}"
+            map[deviceModel] = "${Build.MODEL} ${Build.PRODUCT}"
         } catch (e: Exception) {
             Log.e("Loggy", "Failed", e)
         }

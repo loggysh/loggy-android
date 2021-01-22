@@ -1,6 +1,7 @@
 package loggy.sh
 
 const val appName = "application_name"
+const val deviceUniqueName = "device_unique_name"
 const val appVersion = "application_version"
 const val deviceModel = "device_model"
 const val deviceType = "device_type"
