@@ -55,7 +55,7 @@ object Loggy {
     private var deviceID: String? = null
     private var feature: String? = null
 
-    suspend fun setup(application: Application) {
+    suspend fun setup(application: Application, userID: String, deviceName: String = "") {
         Thread.setDefaultUncaughtExceptionHandler { thread, e ->
             log(100, "Thread: ${thread.name}", "Failed", e)
             exitProcess(1)
@@ -65,6 +65,7 @@ object Loggy {
             deviceID = getDeviceId(application)
 
             val packageName = application.packageName
+            val appID = "$userID/$packageName"
             val stringId = application.applicationInfo.labelRes
             val appName =
                 if (stringId == 0) application.applicationInfo.nonLocalizedLabel.toString() else application.getString(
@@ -76,7 +77,7 @@ object Loggy {
                 val app = loggyService.getOrInsertApplication(
                     sh.loggy.Application.newBuilder()
                         .setIcon("")
-                        .setId(packageName)
+                        .setId(appID)
                         .setName(appName)
                         .build()
                 )
@@ -89,7 +90,7 @@ object Loggy {
                 val device = loggyService.getOrInsertDevice(
                     Device.newBuilder()
                         .setId(deviceID)
-                        .setDetails(deviceInformation(application))
+                        .setDetails(deviceInformation(application, deviceName))
                         .build()
                 )
                 deviceID = device.id
@@ -138,10 +139,11 @@ object Loggy {
         feature = ""
     }
 
-    private fun deviceInformation(context: Context): String {
+    private fun deviceInformation(context: Context, deviceName: String): String {
         val map: MutableMap<String, String> = mutableMapOf()
 
         try {
+            map[deviceUniqueName] = deviceName
             val applicationInfo = context.applicationInfo
             val stringId = applicationInfo.labelRes
             map[appName] =
