@@ -5,13 +5,16 @@ import android.view.LayoutInflater
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
-import loggy.sh.Loggy
+import loggy.sh.sample.MainApplication
 import loggy.sh.sample.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
     private val viewModel: MainViewModel by viewModels()
     lateinit var binding: ActivityMainBinding
+    private val loggy by lazy {
+        (application as MainApplication).loggyInstance()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,11 +27,11 @@ class MainActivity : AppCompatActivity() {
             binding.secondFragmentContainer.isVisible = it == ViewIntention.GoToSecond
             binding.thirdFragmentContainer.isVisible = it == ViewIntention.GoToThird
         })
-        Loggy.startFeature("feature:home")
+        loggy.startFeature("feature:home")
     }
 
     override fun onDestroy() {
-        Loggy.endFeature("feature:home")
+        loggy.endFeature()
         super.onDestroy()
     }
 }
