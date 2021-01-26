@@ -29,7 +29,7 @@ class MainApplication : Application() {
             Timber.plant(LoggyTree(loggy))
         }
 
-        ProcessLifecycleOwner.get().lifecycle.addObserver(ForegroundBackgroundObserver(loggy))
+        ProcessLifecycleOwner.get().lifecycle.addObserver(ForegroundBackgroundObserver())
     }
 
     fun loggyInstance(): Loggy { // TODO: 18/1/21 This needs to go away once we provide a singleton API to access Loggy.
@@ -37,8 +37,7 @@ class MainApplication : Application() {
     }
 }
 
-class ForegroundBackgroundObserver(private val loggy: Loggy) : LifecycleObserver {
-
+class ForegroundBackgroundObserver : LifecycleObserver {
     @OnLifecycleEvent(Lifecycle.Event.ON_CREATE)
     fun create() {
         Timber.d("Application Created")
