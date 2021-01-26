@@ -25,14 +25,14 @@ class Loggy {
     private val port = if (url.port == -1) url.defaultPort else url.port
 
     private val channel: ManagedChannel = ManagedChannelBuilder.forAddress(url.host, port)
-            .apply {
-                Timber.i("Connecting to ${url.host}:$port")
-                if (url.protocol == "https") {
-                    useTransportSecurity()
-                } else {
-                    usePlaintext()
-                }
-            }.build()
+        .apply {
+            Timber.i("Connecting to ${url.host}:$port")
+            if (url.protocol == "https") {
+                useTransportSecurity()
+            } else {
+                usePlaintext()
+            }
+        }.build()
 
     private val loggyService by lazy { LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel) }
 
@@ -42,10 +42,10 @@ class Loggy {
     private var sessionID: Int = -1
     private var feature: String? = null
 
-    suspend fun setup(application: Application) {
+    suspend fun setup(application: Application, userID: String, deviceName: String) {
         installExceptionHandler()
 
-        val loggyContext = LoggyContextForAndroid(application)
+        val loggyContext = LoggyContextForAndroid(application, userID, deviceName)
 
         try {
             val (sessionId, deviceId) = LoggyClient(loggyService).createSession(loggyContext)
@@ -99,15 +99,15 @@ class Loggy {
         val msg = "${feature ?: ""} ${tag ?: ""} \n $message $exception"
         val time: Instant = Instant.now().atZone(ZoneId.of("UTC")).toInstant()
         val timestamp = Timestamp.newBuilder().setSeconds(time.epochSecond)
-                .setNanos(time.nano).build()
+            .setNanos(time.nano).build()
 
         val loggyMessage = Message
-                .newBuilder()
-                .setLevel(level)
-                .setMsg(msg)
-                .setSessionid(sessionID)
-                .setTimestamp(timestamp)
-                .build()
+            .newBuilder()
+            .setLevel(level)
+            .setMsg(msg)
+            .setSessionid(sessionID)
+            .setTimestamp(timestamp)
+            .build()
 
         Log.d("Loggy $sessionID State: ${channel.getState(false)}", message)
         messageChannel.offer(loggyMessage)

@@ -16,11 +16,16 @@ import sh.loggy.Application as LoggyApp
 private const val appName = "application_name"
 private const val appVersion = "application_version"
 private const val deviceModel = "device_model"
+private const val deviceName = "device_name"
 private const val deviceType = "device_type"
 private const val androidOSVersion = "android_os_version"
 private const val androidAPILevel = "android_api_level"
 
-class LoggyContextForAndroid(private val application: Application) : LoggyContext {
+class LoggyContextForAndroid(
+    private val application: Application,
+    private val userID: String,
+    private val dName: String
+) : LoggyContext {
     override fun getApplication(): LoggyApp {
         val appName = if (application.applicationInfo.labelRes == 0) {
             application.applicationInfo.nonLocalizedLabel.toString()
@@ -30,7 +35,7 @@ class LoggyContextForAndroid(private val application: Application) : LoggyContex
 
         return LoggyApp.newBuilder()
             .setIcon("")
-            .setId(application.packageName)
+            .setId("$userID/${application.packageName}")
             .setName(appName)
             .build()
     }
@@ -51,6 +56,7 @@ class LoggyContextForAndroid(private val application: Application) : LoggyContex
         val map: MutableMap<String, String> = mutableMapOf()
 
         try {
+            map[deviceName] = dName
             val applicationInfo = context.applicationInfo
             val stringId = applicationInfo.labelRes
             map[appName] = if (stringId == 0) {
