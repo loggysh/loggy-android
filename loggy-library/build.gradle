@@ -107,16 +107,14 @@ dependencies {
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 }
 
-/*
 mavenPublish {
     targets {
         // Modify the existing uploadArchives task
         uploadArchives {
             releaseRepositoryUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
             snapshotRepositoryUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
-            repositoryUsername = SONATYPE_LOGGY_USERNAME
-            repositoryPassword = SONATYPE_LOGGY_PASSWORD
+            repositoryUsername = hasProperty('SONATYPE_LOGGY_USERNAME') ? SONATYPE_LOGGY_USERNAME : ""
+            repositoryPassword = hasProperty('SONATYPE_LOGGY_PASSWORD') ? SONATYPE_LOGGY_PASSWORD : ""
         }
     }
 }
-*/
