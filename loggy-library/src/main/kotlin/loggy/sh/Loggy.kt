@@ -61,7 +61,7 @@ class Loggy {
         val defaultUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, e ->
             log(100, "Thread: ${thread.name}", "Failed", e)
-            defaultUncaughtExceptionHandler?.uncaughtException(thread, e) // Thanks ragunath.
+            defaultUncaughtExceptionHandler?.uncaughtException(thread, e) // Thanks Ragunath.
         }
     }
 
