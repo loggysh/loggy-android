@@ -27,11 +27,6 @@ android {
                 keyAlias = props["keyAlias"]
                 keyPassword = props["keyPassword"]
             }
-
-            storeFile file('/Users/imran/work/xyz/loggy.keystore')
-            storePassword 'Bz5P25&$$&xF'
-            keyAlias 'loggy'
-            keyPassword 'Bz5P25&$$&xF'
         }
     }
 
