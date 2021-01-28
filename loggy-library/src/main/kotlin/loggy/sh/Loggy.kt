@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.util.Log
 import com.google.protobuf.Timestamp
+import io.grpc.ConnectivityState
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import kotlinx.coroutines.CoroutineScope
@@ -42,7 +43,11 @@ class Loggy {
     private var sessionID: Int = -1
     private var feature: String? = null
 
+    private lateinit var logRepository: LogRepository
+
     suspend fun setup(application: Application, userID: String, deviceName: String) {
+        logRepository = LogRepository(application)
+
         installExceptionHandler()
 
         val loggyContext = LoggyContextForAndroid(application, userID, deviceName)
@@ -68,7 +73,7 @@ class Loggy {
     private fun startListeningForMessages() {
         scope.launch {
             try {
-                loggyService.send(messageChannel.asFlow()) // buffering?
+                loggyService.send(messageChannel.asFlow())
             } catch (e: Exception) {
                 Timber.e(e, "Failed to send message")
             }
@@ -110,7 +115,27 @@ class Loggy {
             .build()
 
         Log.d("Loggy $sessionID State: ${channel.getState(false)}", message)
-        messageChannel.offer(loggyMessage)
+        logRepository.addMessage(loggyMessage.toByteArray())
+        attemptToSendMessage()
+    }
+
+    private fun attemptToSendMessage() {
+        if (channel.getState(true) != ConnectivityState.READY) {
+            Log.e("Loggy", "Connection Failed to Loggy Server")
+            return
+        } else {
+            Log.e("Loggy", "Server Connected. Try to send saved messages")
+        }
+
+        val bytes = logRepository.getMessageTop()
+        if (bytes != null) {
+            val message = Message.parseFrom(bytes)
+            Log.d("Loggy", "$message")
+            messageChannel.offer(message)
+            logRepository.removeTop()
+        } else {
+            Log.d("Loggy", "Empty Messages")
+        }
     }
 
     private fun saveDevice(context: Context, deviceId: String) {
