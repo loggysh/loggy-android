@@ -4,13 +4,13 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.os.Build
+import com.github.shamil.Xid
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import sh.loggy.Device
 import timber.log.Timber
-import java.util.*
 import sh.loggy.Application as LoggyApp
 
 private const val appName = "application_name"
@@ -49,7 +49,7 @@ class LoggyContextForAndroid(
 
     private fun getDeviceID(context: Context): String {
         val preferences = context.getSharedPreferences("loggy", Context.MODE_PRIVATE)
-        return preferences.getString("device_id", UUID.randomUUID().toString())!!
+        return preferences.getString("device_id", Xid.get().toHexString())!!
     }
 
     private fun deviceInformation(context: Context): String {
