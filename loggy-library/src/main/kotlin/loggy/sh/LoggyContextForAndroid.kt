@@ -63,7 +63,7 @@ class LoggyContextForAndroid(
         var deviceId = preferences.getString("device_id", null)
         if (deviceId == null) {
             deviceId = UUID.randomUUID().toString().apply {
-                Log.d("Loggy", "Save New ID")
+                Log.d(LOGGY_TAG, "Save New ID")
                 saveDevice(context, this)
             }
         }
@@ -96,7 +96,7 @@ class LoggyContextForAndroid(
             map[deviceType] = Build.DEVICE
             map[deviceModel] = "${Build.MODEL} ${Build.PRODUCT}"
         } catch (e: Exception) {
-            Timber.e(e, "Loggy Failed")
+            Timber.e(e, "Failed to get Device Information")
         }
 
         val jsonMap: Map<String, JsonElement> = map.mapValues { s -> JsonPrimitive(s.value) }

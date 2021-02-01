@@ -1,32 +1,48 @@
 package loggy.sh
 
 import android.app.Application
+import com.squareup.tape2.ObjectQueue
 import com.squareup.tape2.QueueFile
+import sh.loggy.Message
 import java.io.File
+import java.io.OutputStream
+
+class MessageConverter : ObjectQueue.Converter<Message> {
+    override fun from(source: ByteArray): Message {
+        return Message.parseFrom(source)
+    }
+
+    override fun toStream(value: Message, sink: OutputStream) {
+        val array = value.toByteArray()
+        sink.write(array)
+    }
+
+}
 
 class LogRepository(val application: Application) {
 
-    private val file by lazy { File("${application.filesDir.absolutePath}/logs") }
+    private val file by lazy { File("${application.filesDir.absolutePath}/logs.txt") }
     private val queueFile = QueueFile.Builder(file).zero(true).build()
+    private val objectFile = ObjectQueue.create(queueFile, MessageConverter())
 
-    fun addMessage(bytes: ByteArray) {
-        queueFile.add(bytes)
+    fun addMessage(message: Message) {
+        objectFile.add(message)
     }
 
-    fun getMessageTop(): ByteArray? {
-        return queueFile.peek()
-    }
-
-    fun messageCount(): Int {
-        return queueFile.size()
+    fun getMessageTop(): Message? {
+        return objectFile.peek()
     }
 
     fun removeTop() {
-        queueFile.remove()
+        objectFile.remove()
     }
 
     fun hasMessages(): Boolean {
-        return !queueFile.isEmpty
+        return !objectFile.isEmpty
+    }
+
+    fun messageCount(): Int {
+        return objectFile.size()
     }
 
 }
