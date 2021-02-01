@@ -130,7 +130,12 @@ class Loggy {
             val message = Message.parseFrom(bytes)
             Log.d("Loggy", "$message")
             messageChannel.offer(message)
-            logRepository.removeTop()
+            logRepository.removeTop() // Remove message once sent
+
+            if (logRepository.hasMessages()) {
+                // This means some messages are backed up and this attempts to resend recursively
+                attemptToSendMessage()
+            }
         } else {
             Log.d("Loggy", "Empty Messages")
         }

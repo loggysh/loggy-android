@@ -25,4 +25,8 @@ class LogRepository(val application: Application) {
         queueFile.remove()
     }
 
+    fun hasMessages(): Boolean {
+        return !queueFile.isEmpty
+    }
+
 }
