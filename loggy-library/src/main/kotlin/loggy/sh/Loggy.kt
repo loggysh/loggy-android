@@ -2,6 +2,7 @@ package loggy.sh
 
 import android.app.Application
 import android.util.Log
+import com.google.protobuf.InvalidProtocolBufferException
 import com.google.protobuf.Timestamp
 import io.grpc.ConnectivityState
 import io.grpc.ManagedChannel
@@ -44,9 +45,11 @@ private class LoggyImpl : LoggyInterface {
     private val url = URL(BuildConfig.loggyUrl)
     private val port = if (url.port == -1) url.defaultPort else url.port
 
+    private var isInitialized = false
+
     private val channel: ManagedChannel = ManagedChannelBuilder.forAddress(url.host, port)
         .apply {
-            Timber.i("Connecting to ${url.host}:$port")
+            Log.i(LOGGY_TAG, "Connecting to ${url.host}:$port")
             if (url.protocol == "https") {
                 useTransportSecurity()
             } else {
@@ -59,7 +62,7 @@ private class LoggyImpl : LoggyInterface {
     private val messageChannel = BroadcastChannel<Message>(Channel.BUFFERED)
 
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
-    private var sessionID: Int = -1
+    private var sessionID: Int = 0
     private var feature: String? = null
 
     private lateinit var logRepository: LogRepository
@@ -75,6 +78,7 @@ private class LoggyImpl : LoggyInterface {
             scope.launch {
                 val (sessionId, deviceId) = LoggyClient(loggyService).createSession(loggyContext)
                 sessionID = sessionId
+                isInitialized = true // create session was successful
                 startListeningForMessages()
             }
         } catch (e: Exception) {
@@ -98,17 +102,6 @@ private class LoggyImpl : LoggyInterface {
                 Timber.e(e, "Failed to send message")
             }
         }
-    }
-
-    // T1 -> startFeature                Event Event endFeature
-    // T2 ->              startFeature                           Event endFeature
-
-    fun startFeature(value: String) {
-        feature = value
-    }
-
-    fun endFeature() {
-        feature = ""
     }
 
     override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
@@ -135,28 +128,44 @@ private class LoggyImpl : LoggyInterface {
             .build()
 
         Log.d(LOGGY_TAG, "$sessionID State: ${channel.getState(false)} $message")
-        logRepository.addMessage(loggyMessage.toByteArray())
-        attemptToSendMessage()
+        attemptToSendMessage(loggyMessage)
     }
 
-    private fun attemptToSendMessage() {
-        if (channel.getState(true) != ConnectivityState.READY) {
-            Log.e(LOGGY_TAG, "Connection Failed to Loggy Server")
+    private fun attemptToSendMessage(message: Message) {
+        if (!isInitialized) {
+            // check if server is setup
+            logRepository.addMessage(message)
             return
-        } else {
-            Log.e(LOGGY_TAG, "Server Connected. Try to send saved messages")
         }
 
-        val bytes = logRepository.getMessageTop()
-        if (bytes != null) {
-            val message = Message.parseFrom(bytes)
-            Log.d(LOGGY_TAG, "$message")
-            messageChannel.offer(message)
-            logRepository.removeTop() // Remove message once sent
+        if (channel.getState(true) != ConnectivityState.READY) {
+            Log.e(LOGGY_TAG, "Connection Failed to Loggy Server")
+            logRepository.addMessage(message)
+            return
+        }
 
-            if (logRepository.hasMessages()) {
-                // This means some messages are backed up and this attempts to resend recursively
-                attemptToSendMessage()
+        messageChannel.offer(message)
+        Log.e(
+            LOGGY_TAG,
+            "Server Connected. Try to send saved messages. Messages Left ${logRepository
+                .messageCount()}"
+        )
+
+        if (logRepository.hasMessages()) {
+            // This means some messages are backed up and this attempts to resend recursively
+            var parsedMessage: Message? = null
+            try {
+                parsedMessage = logRepository.getMessageTop()
+            } catch (e: InvalidProtocolBufferException) {
+                Log.e(LOGGY_TAG, "Invalid message", e)
+            } catch (e: Exception) {
+                Log.e(LOGGY_TAG, e.message, e)
+            }
+            // remove any message from top.
+            // Its possible for a message to get corrupted.
+            logRepository.removeTop()
+            if (parsedMessage != null) {
+                attemptToSendMessage(parsedMessage)
             }
         } else {
             Log.d(LOGGY_TAG, "Empty Messages")
