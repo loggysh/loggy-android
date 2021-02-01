@@ -13,7 +13,7 @@ Android Client for Loggy
         Loggy.setup(
                 this@MainApplication,
                 "<user-id>",
-                "<device-name>" // Lady Ada
+                "<device-name>" // Lady Ada Lovelace
             )
     }
 ```

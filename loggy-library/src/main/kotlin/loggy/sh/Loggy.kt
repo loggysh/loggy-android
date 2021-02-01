@@ -20,7 +20,27 @@ import java.net.URL
 import java.time.Instant
 import java.time.ZoneId
 
-class Loggy {
+const val LOGGY_TAG = "loggy.sh"
+
+private interface LoggyInterface {
+    fun setup(application: Application, userID: String, deviceName: String)
+    fun log(priority: Int, tag: String?, message: String, t: Throwable?)
+}
+
+object Loggy : LoggyInterface {
+
+    private val loggyImpl: LoggyImpl by lazy { LoggyImpl() }
+
+    override fun setup(application: Application, userID: String, deviceName: String) {
+        loggyImpl.setup(application, userID, deviceName)
+    }
+
+    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+        loggyImpl.log(priority, tag, message, t)
+    }
+}
+
+private class LoggyImpl : LoggyInterface {
     private val url = URL(BuildConfig.loggyUrl)
     private val port = if (url.port == -1) url.defaultPort else url.port
 
@@ -44,7 +64,7 @@ class Loggy {
 
     private lateinit var logRepository: LogRepository
 
-    suspend fun setup(application: Application, userID: String, deviceName: String) {
+    override fun setup(application: Application, userID: String, deviceName: String) {
         logRepository = LogRepository(application)
 
         installExceptionHandler()
@@ -52,9 +72,11 @@ class Loggy {
         val loggyContext = LoggyContextForAndroid(application, userID, deviceName)
 
         try {
-            val (sessionId, deviceId) = LoggyClient(loggyService).createSession(loggyContext)
-            sessionID = sessionId
-            startListeningForMessages()
+            scope.launch {
+                val (sessionId, deviceId) = LoggyClient(loggyService).createSession(loggyContext)
+                sessionID = sessionId
+                startListeningForMessages()
+            }
         } catch (e: Exception) {
             Timber.e(e, "Failed to setup loggy")
         }
@@ -63,7 +85,7 @@ class Loggy {
     private fun installExceptionHandler() { // TODO Platform dependent
         val defaultUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, e ->
-            log(100, "Thread: ${thread.name}", "Failed", e)
+            log(100, "Thread: ${thread.name}", e.message ?: "Unknown Message", e)
             defaultUncaughtExceptionHandler?.uncaughtException(thread, e) // Thanks Ragunath.
         }
     }
@@ -89,7 +111,7 @@ class Loggy {
         feature = ""
     }
 
-    fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
         val level = when (priority) {
             Log.VERBOSE, Log.ASSERT, Log.DEBUG -> Message.Level.DEBUG
             Log.ERROR -> Message.Level.ERROR
@@ -112,23 +134,23 @@ class Loggy {
             .setTimestamp(timestamp)
             .build()
 
-        Log.d("Loggy $sessionID State: ${channel.getState(false)}", message)
+        Log.d(LOGGY_TAG, "$sessionID State: ${channel.getState(false)} $message")
         logRepository.addMessage(loggyMessage.toByteArray())
         attemptToSendMessage()
     }
 
     private fun attemptToSendMessage() {
         if (channel.getState(true) != ConnectivityState.READY) {
-            Log.e("Loggy", "Connection Failed to Loggy Server")
+            Log.e(LOGGY_TAG, "Connection Failed to Loggy Server")
             return
         } else {
-            Log.e("Loggy", "Server Connected. Try to send saved messages")
+            Log.e(LOGGY_TAG, "Server Connected. Try to send saved messages")
         }
 
         val bytes = logRepository.getMessageTop()
         if (bytes != null) {
             val message = Message.parseFrom(bytes)
-            Log.d("Loggy", "$message")
+            Log.d(LOGGY_TAG, "$message")
             messageChannel.offer(message)
             logRepository.removeTop() // Remove message once sent
 
@@ -137,7 +159,7 @@ class Loggy {
                 attemptToSendMessage()
             }
         } else {
-            Log.d("Loggy", "Empty Messages")
+            Log.d(LOGGY_TAG, "Empty Messages")
         }
     }
 }

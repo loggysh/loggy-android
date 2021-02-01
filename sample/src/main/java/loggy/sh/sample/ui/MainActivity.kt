@@ -12,9 +12,6 @@ class MainActivity : AppCompatActivity() {
 
     private val viewModel: MainViewModel by viewModels()
     lateinit var binding: ActivityMainBinding
-    private val loggy by lazy {
-        (application as MainApplication).loggyInstance()
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,11 +24,9 @@ class MainActivity : AppCompatActivity() {
             binding.secondFragmentContainer.isVisible = it == ViewIntention.GoToSecond
             binding.thirdFragmentContainer.isVisible = it == ViewIntention.GoToThird
         })
-        loggy.startFeature("feature:home")
     }
 
     override fun onDestroy() {
-        loggy.endFeature()
         super.onDestroy()
     }
 }
