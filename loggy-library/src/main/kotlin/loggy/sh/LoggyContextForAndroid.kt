@@ -4,13 +4,15 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.os.Build
-import com.github.shamil.Xid
+import android.util.Log
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import loggy.sh.utils.Hashids
 import sh.loggy.Device
 import timber.log.Timber
+import java.util.*
 import sh.loggy.Application as LoggyApp
 
 private const val appName = "application_name"
@@ -26,6 +28,9 @@ class LoggyContextForAndroid(
     private val userID: String,
     private val dName: String
 ) : LoggyContext {
+
+    private val applicationID: String by lazy { "$userID/${application.packageName}" }
+
     override fun getApplication(): LoggyApp {
         val appName = if (application.applicationInfo.labelRes == 0) {
             application.applicationInfo.nonLocalizedLabel.toString()
@@ -35,7 +40,7 @@ class LoggyContextForAndroid(
 
         return LoggyApp.newBuilder()
             .setIcon("")
-            .setId("$userID/${application.packageName}")
+            .setId(applicationID)
             .setName(appName)
             .build()
     }
@@ -47,9 +52,27 @@ class LoggyContextForAndroid(
             .build()
     }
 
+    override fun getDeviceHash(appID: String, deviceID: String): String {
+        val appHash = Hashids(appID, 6).encode(1, 2, 3)
+        val deviceHash = Hashids(deviceID, 6).encode(4, 4, 4)
+        return "$appHash/$deviceHash"
+    }
+
     private fun getDeviceID(context: Context): String {
         val preferences = context.getSharedPreferences("loggy", Context.MODE_PRIVATE)
-        return preferences.getString("device_id", Xid.get().toHexString())!!
+        var deviceId = preferences.getString("device_id", null)
+        if (deviceId == null) {
+            deviceId = UUID.randomUUID().toString().apply {
+                Log.d("Loggy", "Save New ID")
+                saveDevice(context, this)
+            }
+        }
+        return deviceId
+    }
+
+    private fun saveDevice(context: Context, deviceId: String) {
+        val preferences = context.getSharedPreferences("loggy", Context.MODE_PRIVATE)
+        preferences.edit().putString("device_id", deviceId).apply()
     }
 
     private fun deviceInformation(context: Context): String {

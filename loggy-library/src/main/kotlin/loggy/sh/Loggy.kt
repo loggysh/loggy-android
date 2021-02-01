@@ -1,7 +1,6 @@
 package loggy.sh
 
 import android.app.Application
-import android.content.Context
 import android.util.Log
 import com.google.protobuf.Timestamp
 import io.grpc.ConnectivityState
@@ -55,7 +54,6 @@ class Loggy {
         try {
             val (sessionId, deviceId) = LoggyClient(loggyService).createSession(loggyContext)
             sessionID = sessionId
-            saveDevice(application, deviceId)
             startListeningForMessages()
         } catch (e: Exception) {
             Timber.e(e, "Failed to setup loggy")
@@ -136,10 +134,5 @@ class Loggy {
         } else {
             Log.d("Loggy", "Empty Messages")
         }
-    }
-
-    private fun saveDevice(context: Context, deviceId: String) {
-        val preferences = context.getSharedPreferences("loggy", Context.MODE_PRIVATE)
-        preferences.edit().putString("device_id", deviceId).apply()
     }
 }
