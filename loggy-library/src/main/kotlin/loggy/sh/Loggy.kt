@@ -104,6 +104,29 @@ private class LoggyImpl : LoggyInterface {
         }
     }
 
+    /**
+     * S - Start Application - End Process = 0
+     * App Start - Create QueueFile -- M1 M2 M3 M4 App Killed-- 0
+     * App online - create new session - send data
+     * App Start - Create QueueFile-- M5 M6 M7 App Killed-- 1
+     * App online - create new session - send data
+     *
+     * 1. Increment on Device and send messages.
+     * 2. Associate Session ID with Device ID
+     *
+     * S1 M1 M2 M3 M4
+     *                S2 M5 M6 M7
+     *
+     * D1 -  1076aa98-c4c4-4c28-8a33-16271e38e651
+     *
+     * Select * from sessions where device_id=1076aa98-c4c4-4c28-8a33-16271e38e651
+     * 1, 2, 3, 4
+     * Select * from message where device_id=1076aa98-c4c4-4c28-8a33-16271e38e651 AND session_id=1
+     *
+     * rpc RegisterSend (SessionId) returns (google.protobuf.Empty) {}
+     * rpc RegisterReceive (SessionId) returns (ReceiverId) {}
+     */
+
     override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
         val level = when (priority) {
             Log.VERBOSE, Log.ASSERT, Log.DEBUG -> Message.Level.DEBUG
