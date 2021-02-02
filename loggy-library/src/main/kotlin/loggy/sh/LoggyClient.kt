@@ -15,9 +15,10 @@ class LoggyClient(
         val deviceWithId = loggyService.getOrInsertDevice(loggyContext.getDevice())
 
         Timber.d("Register For Session")
-        val session = session(loggyAppWithId.id, deviceWithId.id)
+        val session = session(loggyAppWithId.id, deviceWithId.id) //TODO wont work offline
         val sessionWithId = loggyService.insertSession(session)
 
+        Timber.d("${loggyContext.getDeviceHash(loggyAppWithId.id, deviceWithId.id)}")
         Timber.d("Register Send")
         loggyService.registerSend(sessionWithId) // TODO: 20/01/21 violates SRP
         return SessionIdentifiers(sessionWithId.id, deviceWithId.id)
