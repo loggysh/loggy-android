@@ -21,7 +21,7 @@ import java.net.URL
 import java.time.Instant
 import java.time.ZoneId
 
-const val LOGGY_TAG = "loggy.sh"
+const val LOGGY_TAG = "Loggy"
 
 private interface LoggyInterface {
     fun setup(application: Application, userID: String, deviceName: String)

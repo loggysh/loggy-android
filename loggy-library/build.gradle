@@ -96,7 +96,9 @@ dependencies {
         exclude group: "io.grpc"
         exclude group: "grpc-protobuf"
     }
+
     implementation 'com.squareup.tape2:tape:2.0.0-beta1'
+    implementation 'com.squareup.okio:okio:2.10.0'
     implementation 'com.github.0xshamil:java-xid:1.0.0'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
