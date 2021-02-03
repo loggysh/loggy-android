@@ -9,19 +9,19 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import loggy.sh.DeviceProperties.androidAPILevel
+import loggy.sh.DeviceProperties.androidOSVersion
+import loggy.sh.DeviceProperties.appName
+import loggy.sh.DeviceProperties.appVersion
+import loggy.sh.DeviceProperties.deviceId
+import loggy.sh.DeviceProperties.deviceModel
+import loggy.sh.DeviceProperties.deviceName
+import loggy.sh.DeviceProperties.deviceType
 import loggy.sh.utils.Hashids
 import sh.loggy.Device
 import timber.log.Timber
 import java.util.*
 import sh.loggy.Application as LoggyApp
-
-private const val appName = "application_name"
-private const val appVersion = "application_version"
-private const val deviceModel = "device_model"
-private const val deviceName = "device_name"
-private const val deviceType = "device_type"
-private const val androidOSVersion = "android_os_version"
-private const val androidAPILevel = "android_api_level"
 
 class LoggyContextForAndroid(
     private val application: Application,
@@ -60,7 +60,7 @@ class LoggyContextForAndroid(
 
     private fun getDeviceID(context: Context): String {
         val preferences = context.getSharedPreferences("loggy", Context.MODE_PRIVATE)
-        var deviceId = preferences.getString("device_id", null)
+        var deviceId = preferences.getString(deviceId, null)
         if (deviceId == null) {
             deviceId = UUID.randomUUID().toString().apply {
                 Log.d(LOGGY_TAG, "Save New ID")
@@ -72,7 +72,7 @@ class LoggyContextForAndroid(
 
     private fun saveDevice(context: Context, deviceId: String) {
         val preferences = context.getSharedPreferences("loggy", Context.MODE_PRIVATE)
-        preferences.edit().putString("device_id", deviceId).apply()
+        preferences.edit().putString(deviceId, deviceId).apply()
     }
 
     private fun deviceInformation(context: Context): String {
