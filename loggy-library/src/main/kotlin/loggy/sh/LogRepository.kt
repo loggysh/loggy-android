@@ -19,6 +19,7 @@ class MessageConverter : ObjectQueue.Converter<Message> {
     override fun toStream(value: Message, os: OutputStream) {
         try {
             val bytes = value.toByteArray()
+            Log.d(LOGGY_TAG, "SIZE ${bytes.size}")
             if (bytes.isNotEmpty()) {
                 os.sink().buffer().use { sink ->
                     sink.write(bytes)
@@ -33,6 +34,10 @@ class MessageConverter : ObjectQueue.Converter<Message> {
 
 class LogRepository(val application: Application) {
 
+    /**
+     * File 1 - loggy-nanotime.log - Session ID
+     * File 2 - loggy-nanotime.log - Session ID
+     */
     private val file by lazy { File("${application.filesDir.absolutePath}/logs.txt") }
     private val queueFile = QueueFile.Builder(file).zero(true).build()
     private val objectFile = ObjectQueue.create(queueFile, MessageConverter())

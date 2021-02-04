@@ -2,6 +2,7 @@ package loggy.sh
 
 import sh.loggy.LoggyServiceGrpcKt
 import sh.loggy.Session
+import sh.loggy.SessionId
 import timber.log.Timber
 
 class LoggyClient(

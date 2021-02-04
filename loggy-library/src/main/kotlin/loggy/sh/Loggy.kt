@@ -125,6 +125,10 @@ private class LoggyImpl : LoggyInterface {
      *
      * rpc RegisterSend (SessionId) returns (google.protobuf.Empty) {}
      * rpc RegisterReceive (SessionId) returns (ReceiverId) {}
+     *
+     * App Session - 1 - Server Session ID - undefined - then - insertSession - 101
+     * App Session - 2 - Server Session ID - undefined - insertSession - 102
+     * App Session - 3 - Server Session ID - undefined - insertSession - 103
      */
 
     override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
@@ -142,6 +146,7 @@ private class LoggyImpl : LoggyInterface {
         val timestamp = Timestamp.newBuilder().setSeconds(time.epochSecond)
             .setNanos(time.nano).build()
 
+        // auto-increment
         val loggyMessage = Message
             .newBuilder()
             .setLevel(level)
