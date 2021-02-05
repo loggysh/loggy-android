@@ -2,12 +2,18 @@ package loggy.sh
 
 import sh.loggy.LoggyServiceGrpcKt
 import sh.loggy.Session
-import sh.loggy.SessionId
 import timber.log.Timber
 
 class LoggyClient(
     private val loggyService: LoggyServiceGrpcKt.LoggyServiceCoroutineStub
 ) {
+
+    private fun session(applicationID: String, deviceID: String): Session =
+        Session.newBuilder()
+            .setAppid(applicationID)
+            .setDeviceid(deviceID)
+            .build()
+
     suspend fun createSession(loggyContext: LoggyContext): SessionIdentifiers {
         Timber.d("Register For Application")
         val loggyAppWithId = loggyService.getOrInsertApplication(loggyContext.getApplication())
@@ -25,9 +31,5 @@ class LoggyClient(
         return SessionIdentifiers(sessionWithId.id, deviceWithId.id)
     }
 
-    private fun session(applicationID: String, deviceID: String): Session =
-        Session.newBuilder()
-            .setAppid(applicationID)
-            .setDeviceid(deviceID)
-            .build()
+
 }

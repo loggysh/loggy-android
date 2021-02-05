@@ -11,7 +11,7 @@ import java.io.File
 import java.io.IOException
 import java.io.OutputStream
 
-class MessageConverter : ObjectQueue.Converter<Message> {
+private class MessageConverter : ObjectQueue.Converter<Message> {
     override fun from(source: ByteArray): Message {
         return Message.parseFrom(source)
     }

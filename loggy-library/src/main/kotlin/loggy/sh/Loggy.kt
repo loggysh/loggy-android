@@ -175,8 +175,10 @@ private class LoggyImpl : LoggyInterface {
         messageChannel.offer(message)
         Log.e(
             LOGGY_TAG,
-            "Server Connected. Try to send saved messages. Messages Left ${logRepository
-                .messageCount()}"
+            "Server Connected. Try to send saved messages. Messages Left ${
+                logRepository
+                    .messageCount()
+            }"
         )
 
         if (logRepository.hasMessages()) {
