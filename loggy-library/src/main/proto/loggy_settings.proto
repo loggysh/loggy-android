@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+option java_multiple_files = false;
+option java_package = "sh.loggy";
+option java_outer_classname = "LoggySettings";
+
+package loggy;
+
+message Settings {
+    string user_id = 1;
+    string user_name = 2;
+    string email = 3;
+    string app_id = 4;
+    string device_id = 5;
+}
+
+message SessionPair {
+    map<int32, SessionIdentifier> sessions = 1;
+}
+
+message SessionIdentifier {
+    int32 id = 1; /* ID defined by server */
+    string device_id = 2;
+}

@@ -24,20 +24,25 @@ import java.time.ZoneId
 const val LOGGY_TAG = "Loggy"
 
 private interface LoggyInterface {
-    fun setup(application: Application, userID: String, deviceName: String)
+    fun setup(application: Application, clientID: String)
     fun log(priority: Int, tag: String?, message: String, t: Throwable?)
+    fun identity(userID: String? = "", email: String? = "", userName: String? = "")
 }
 
 object Loggy : LoggyInterface {
 
     private val loggyImpl: LoggyImpl by lazy { LoggyImpl() }
 
-    override fun setup(application: Application, userID: String, deviceName: String) {
-        loggyImpl.setup(application, userID, deviceName)
+    override fun setup(application: Application, clientID: String) {
+        loggyImpl.setup(application, clientID)
     }
 
     override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
         loggyImpl.log(priority, tag, message, t)
+    }
+
+    override fun identity(userID: String?, email: String?, userName: String?) {
+        loggyImpl.identity(userID, email, userName)
     }
 }
 
@@ -66,13 +71,14 @@ private class LoggyImpl : LoggyInterface {
     private var feature: String? = null
 
     private lateinit var logRepository: LogRepository
+    private lateinit var loggyContext: LoggyContextForAndroid
 
-    override fun setup(application: Application, userID: String, deviceName: String) {
+    override fun setup(application: Application, clientID: String) {
         logRepository = LogRepository(application)
 
         installExceptionHandler()
 
-        val loggyContext = LoggyContextForAndroid(application, userID, deviceName)
+        loggyContext = LoggyContextForAndroid(application, clientID)
 
         try {
             scope.launch {
@@ -157,6 +163,10 @@ private class LoggyImpl : LoggyInterface {
 
         Log.d(LOGGY_TAG, "$sessionID State: ${channel.getState(false)} $message")
         attemptToSendMessage(loggyMessage)
+    }
+
+    override fun identity(userID: String?, email: String?, userName: String?) {
+
     }
 
     private fun attemptToSendMessage(message: Message) {

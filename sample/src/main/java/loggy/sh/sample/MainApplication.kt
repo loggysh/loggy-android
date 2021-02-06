@@ -17,10 +17,14 @@ class MainApplication : Application() {
 
         Loggy.setup(
             this@MainApplication,
-            "abae31cc-c693-4c1f-a66d-af61232cd716",
-            "Lady Ada Lovelace"
+            "abae31cc-c693-4c1f-a66d-af61232cd716"
         )
         Timber.plant(LoggyTree())
+
+        Loggy.identity(
+            userName = "Lady Ada Lovelace"
+        )
+        
         ProcessLifecycleOwner.get().lifecycle.addObserver(ForegroundBackgroundObserver())
     }
 

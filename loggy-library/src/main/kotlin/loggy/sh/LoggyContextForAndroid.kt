@@ -6,10 +6,7 @@ import android.content.pm.PackageInfo
 import android.os.Build
 import android.util.Log
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.createDataStore
+import androidx.datastore.createDataStore
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
@@ -24,23 +21,26 @@ import loggy.sh.DeviceProperties.deviceModel
 import loggy.sh.DeviceProperties.deviceName
 import loggy.sh.DeviceProperties.deviceType
 import loggy.sh.utils.Hashids
+import loggy.sh.utils.SettingsSerializer
 import sh.loggy.Device
+import sh.loggy.LoggySettings
 import timber.log.Timber
 import java.util.*
 import sh.loggy.Application as LoggyApp
 
 class LoggyContextForAndroid(
     private val application: Application,
-    private val userID: String,
-    private val dName: String
+    private val clientID: String
 ) : LoggyContext {
 
-    private val applicationID: String by lazy { "$userID/${application.packageName}" }
+    private val applicationID: String by lazy { "$clientID/${application.packageName}" }
 
-    private val deviceIDPreferenceKey = stringPreferencesKey("device_id")
-    val loggyDataStore: DataStore<Preferences> = application.createDataStore(
-        name = "loggy_settings"
-    )
+    private val settingsDataStore: DataStore<LoggySettings.Settings> by lazy {
+        application.createDataStore(
+            fileName = "settings.pb",
+            serializer = SettingsSerializer
+        )
+    }
 
     override suspend fun getApplication(): LoggyApp {
         val appName = if (application.applicationInfo.labelRes == 0) {
@@ -70,9 +70,8 @@ class LoggyContextForAndroid(
     }
 
     private suspend fun getDeviceID(): String {
-        var deviceId =
-            loggyDataStore.data.map { value -> value[deviceIDPreferenceKey] }.firstOrNull()
-        if (deviceId == null) {
+        var deviceId = settingsDataStore.data.map { value -> value.deviceId }.firstOrNull()
+        if (deviceId.isNullOrEmpty()) {
             deviceId = UUID.randomUUID().toString().apply {
                 Log.d(LOGGY_TAG, "Save New ID")
                 saveDevice(this)
@@ -82,8 +81,8 @@ class LoggyContextForAndroid(
     }
 
     private suspend fun saveDevice(deviceId: String) {
-        loggyDataStore.edit { preferences ->
-            preferences[deviceIDPreferenceKey] = deviceId
+        settingsDataStore.updateData { deviceIdentifier ->
+            deviceIdentifier.toBuilder().setDeviceId(deviceId).build()
         }
     }
 
@@ -91,7 +90,7 @@ class LoggyContextForAndroid(
         val map: MutableMap<String, String> = mutableMapOf()
 
         try {
-            map[deviceName] = dName
+            map[deviceName] = ""
             val applicationInfo = context.applicationInfo
             val stringId = applicationInfo.labelRes
             map[appName] = if (stringId == 0) {
