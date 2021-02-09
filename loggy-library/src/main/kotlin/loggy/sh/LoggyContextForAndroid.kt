@@ -7,8 +7,10 @@ import android.os.Build
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.createDataStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -33,6 +35,7 @@ class LoggyContextForAndroid(
     private val clientID: String
 ) : LoggyContext {
 
+    private val scope = CoroutineScope(Dispatchers.Default)
     private val applicationID: String by lazy { "$clientID/${application.packageName}" }
 
     private val settingsDataStore: DataStore<LoggySettings.Settings> by lazy {
@@ -40,6 +43,12 @@ class LoggyContextForAndroid(
             fileName = "settings.pb",
             serializer = SettingsSerializer
         )
+    }
+
+    init {
+        scope.launch {
+            saveApplicationID(applicationID)
+        }
     }
 
     override suspend fun getApplication(): LoggyApp {
@@ -56,11 +65,42 @@ class LoggyContextForAndroid(
             .build()
     }
 
+    override suspend fun saveApplicationID(appID: String) {
+        settingsDataStore.updateData { settings ->
+            settings.toBuilder().setAppId(appID).build()
+        }
+    }
+
+    override suspend fun getApplicationID(): String {
+        return settingsDataStore.data.firstOrNull()?.appId ?: applicationID
+    }
+
     override suspend fun getDevice(): Device {
         return Device.newBuilder()
             .setId(getDeviceID())
             .setDetails(deviceInformation(application))
             .build()
+    }
+
+    override suspend fun saveDeviceID(deviceID: String) {
+        Log.d(LOGGY_TAG, "Save Device ID")
+        settingsDataStore.updateData { settings ->
+            settings.toBuilder().setDeviceId(deviceID).build()
+        }
+    }
+
+    override suspend fun saveIdentity(userId: String?, email: String?, userName: String?) {
+        settingsDataStore.updateData { settings ->
+            val sUserId = userId ?: settings.userId
+            val sEmail = email ?: settings.email
+            val sUserName = userName ?: settings.userName
+
+            settings.toBuilder()
+                .setUserId(sUserId)
+                .setEmail(sEmail)
+                .setUserName(sUserName)
+                .build()
+        }
     }
 
     override fun getDeviceHash(appID: String, deviceID: String): String {
@@ -69,21 +109,13 @@ class LoggyContextForAndroid(
         return "$appHash/$deviceHash"
     }
 
-    private suspend fun getDeviceID(): String {
-        var deviceId = settingsDataStore.data.map { value -> value.deviceId }.firstOrNull()
+    override suspend fun getDeviceID(): String {
+        var deviceId = settingsDataStore.data.firstOrNull()?.deviceId
         if (deviceId.isNullOrEmpty()) {
-            deviceId = UUID.randomUUID().toString().apply {
-                Log.d(LOGGY_TAG, "Save New ID")
-                saveDevice(this)
-            }
+            deviceId = UUID.randomUUID().toString()
+            saveDeviceID(deviceId)
         }
         return deviceId
-    }
-
-    private suspend fun saveDevice(deviceId: String) {
-        settingsDataStore.updateData { deviceIdentifier ->
-            deviceIdentifier.toBuilder().setDeviceId(deviceId).build()
-        }
     }
 
     private fun deviceInformation(context: Context): String {

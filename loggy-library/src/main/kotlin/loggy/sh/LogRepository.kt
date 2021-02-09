@@ -39,7 +39,7 @@ class LogRepository(val application: Application) {
      * File 2 - loggy-nanotime.log - Session ID
      */
     private val file by lazy { File("${application.filesDir.absolutePath}/logs.txt") }
-    private val queueFile = QueueFile.Builder(file).zero(true).build()
+    private val queueFile = QueueFile.Builder(file).build()
     private val objectFile = ObjectQueue.create(queueFile, MessageConverter())
 
     fun addMessage(message: Message) {
@@ -51,11 +51,20 @@ class LogRepository(val application: Application) {
     }
 
     fun getMessageTop(): Message? {
-        return objectFile.peek()
+        try {
+            return objectFile.peek()
+        } catch (e: Exception) {
+            Log.e(LOGGY_TAG, e.message, e)
+        }
+        return null
     }
 
     fun removeTop() {
-        objectFile.remove()
+        try {
+            objectFile.remove()
+        } catch (e: Exception) {
+            Log.e(LOGGY_TAG, e.message, e)
+        }
     }
 
     fun hasMessages(): Boolean {

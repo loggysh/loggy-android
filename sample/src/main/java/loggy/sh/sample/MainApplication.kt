@@ -24,7 +24,7 @@ class MainApplication : Application() {
         Loggy.identity(
             userName = "Lady Ada Lovelace"
         )
-        
+
         ProcessLifecycleOwner.get().lifecycle.addObserver(ForegroundBackgroundObserver())
     }
 

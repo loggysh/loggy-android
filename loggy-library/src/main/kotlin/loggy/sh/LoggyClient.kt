@@ -2,6 +2,7 @@ package loggy.sh
 
 import sh.loggy.LoggyServiceGrpcKt
 import sh.loggy.Session
+import sh.loggy.SessionId
 import timber.log.Timber
 
 class LoggyClient(
@@ -14,22 +15,26 @@ class LoggyClient(
             .setDeviceid(deviceID)
             .build()
 
-    suspend fun createSession(loggyContext: LoggyContext): SessionIdentifiers {
+    suspend fun createSession(loggyContext: LoggyContext): Int {
         Timber.d("Register For Application")
         val loggyAppWithId = loggyService.getOrInsertApplication(loggyContext.getApplication())
 
-        Timber.d("Register New Device")
+        Timber.d("Register For Device")
         val deviceWithId = loggyService.getOrInsertDevice(loggyContext.getDevice())
 
         Timber.d("Register For Session")
         val session = session(loggyAppWithId.id, deviceWithId.id) //TODO wont work offline
         val sessionWithId = loggyService.insertSession(session)
 
-        Timber.d("${loggyContext.getDeviceHash(loggyAppWithId.id, deviceWithId.id)}")
-        Timber.d("Register Send")
-        loggyService.registerSend(sessionWithId) // TODO: 20/01/21 violates SRP
-        return SessionIdentifiers(sessionWithId.id, deviceWithId.id)
+        return sessionWithId.id
     }
 
+    suspend fun registerForLiveSession(sessionId: Int) {
+        Timber.d("Register For Live Logs")
+        val sessionWithId = SessionId.newBuilder()
+            .setId(sessionId)
+            .build()
+        loggyService.registerSend(sessionWithId)
+    }
 
 }

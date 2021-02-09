@@ -42,7 +42,7 @@ object Loggy : LoggyInterface {
     }
 
     override fun identity(userID: String?, email: String?, userName: String?) {
-        loggyImpl.identity(userID, email, userName)
+//        loggyImpl.identity(userID, email, userName)
     }
 }
 
@@ -78,13 +78,23 @@ private class LoggyImpl : LoggyInterface {
 
         installExceptionHandler()
 
-        loggyContext = LoggyContextForAndroid(application, clientID)
-
         try {
+            loggyContext = LoggyContextForAndroid(application, clientID)
+
+            val loggyClient = LoggyClient(loggyService)
             scope.launch {
-                val (sessionId, deviceId) = LoggyClient(loggyService).createSession(loggyContext)
+                Timber.d(
+                    "Loggy ${
+                        loggyContext.getDeviceHash(
+                            loggyContext.getApplicationID(), loggyContext
+                                .getDeviceID()
+                        )
+                    }"
+                )
+                val sessionId = loggyClient.createSession(loggyContext)
                 sessionID = sessionId
                 isInitialized = true // create session was successful
+                loggyClient.registerForLiveSession(sessionId)
                 startListeningForMessages()
             }
         } catch (e: Exception) {
@@ -166,7 +176,9 @@ private class LoggyImpl : LoggyInterface {
     }
 
     override fun identity(userID: String?, email: String?, userName: String?) {
-
+        scope.launch {
+            loggyContext.saveIdentity(userID, email, userName)
+        }
     }
 
     private fun attemptToSendMessage(message: Message) {
@@ -202,7 +214,7 @@ private class LoggyImpl : LoggyInterface {
                 Log.e(LOGGY_TAG, e.message, e)
             }
             // remove any message from top.
-            // Its possible for a message to get corrupted.
+            // Its possible for a message to get corrupted.`
             logRepository.removeTop()
             if (parsedMessage != null) {
                 attemptToSendMessage(parsedMessage)
