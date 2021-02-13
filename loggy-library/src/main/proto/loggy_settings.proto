@@ -15,6 +15,7 @@ message Settings {
 }
 
 message SessionPair {
+    int32 session_counter = 6;
     map<int32, SessionIdentifier> sessions = 1;
 }
 
