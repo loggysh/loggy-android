@@ -4,7 +4,12 @@ import sh.loggy.Application
 import sh.loggy.Device
 
 interface LoggyContext {
-    fun getApplication(): Application
-    fun getDevice(): Device
+    suspend fun getApplication(): Application
+    suspend fun saveApplicationID(appID: String)
+    suspend fun getApplicationID(): String
+    suspend fun getDevice(): Device
+    suspend fun saveDeviceID(deviceID: String)
+    suspend fun getDeviceID(): String
+    suspend fun saveIdentity(userId: String?, email: String?, userName: String?)
     fun getDeviceHash(appID: String, deviceID: String): String
 }

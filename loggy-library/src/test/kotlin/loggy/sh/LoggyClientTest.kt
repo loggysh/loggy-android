@@ -46,7 +46,7 @@ class LoggyClientTest {
 
         // then
         assertThat(session)
-            .isEqualTo(SessionIdentifiers(sessionID, deviceID))
+            .isEqualTo(sessionID)
     }
 
     // TODO: 20/1/21 Missing test when #getOrInsertApplication throws an exception.

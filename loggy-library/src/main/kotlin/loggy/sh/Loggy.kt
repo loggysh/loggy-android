@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import loggy.sh.loggy.BuildConfig
 import sh.loggy.LoggyServiceGrpcKt
@@ -20,11 +21,12 @@ import timber.log.Timber
 import java.net.URL
 import java.time.Instant
 import java.time.ZoneId
+import java.util.concurrent.LinkedBlockingQueue
 
-const val LOGGY_TAG = "loggy.sh"
+const val LOGGY_TAG = "Loggy"
 
 private interface LoggyInterface {
-    fun setup(application: Application, userID: String, deviceName: String)
+    fun setup(application: Application, clientID: String)
     fun log(priority: Int, tag: String?, message: String, t: Throwable?)
 }
 
@@ -32,12 +34,19 @@ object Loggy : LoggyInterface {
 
     private val loggyImpl: LoggyImpl by lazy { LoggyImpl() }
 
-    override fun setup(application: Application, userID: String, deviceName: String) {
-        loggyImpl.setup(application, userID, deviceName)
+    override fun setup(application: Application, clientID: String) {
+        loggyImpl.setup(application, clientID)
     }
 
     override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
         loggyImpl.log(priority, tag, message, t)
+    }
+
+    /**
+     * Cannot overide from interface. Since Interface defaults overriding is not allowed.
+     */
+    fun identity(userID: String? = "", email: String? = "", userName: String? = "") {
+        loggyImpl.identity(userID, email, userName)
     }
 }
 
@@ -58,28 +67,48 @@ private class LoggyImpl : LoggyInterface {
         }.build()
 
     private val loggyService by lazy { LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel) }
-
     private val messageChannel = BroadcastChannel<Message>(Channel.BUFFERED)
 
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
-    private var sessionID: Int = 0
+    private var sessionID: Int = -1
     private var feature: String? = null
 
+    private val noSessionMessages = LinkedBlockingQueue<Message>()
+    private lateinit var loggyClient: LoggyClient
     private lateinit var logRepository: LogRepository
+    private lateinit var loggyContext: LoggyContextForAndroid
 
-    override fun setup(application: Application, userID: String, deviceName: String) {
+    override fun setup(application: Application, clientID: String) {
         logRepository = LogRepository(application)
+        loggyClient = LoggyClient(application, loggyService)
 
         installExceptionHandler()
 
-        val loggyContext = LoggyContextForAndroid(application, userID, deviceName)
-
         try {
+            loggyContext = LoggyContextForAndroid(application, clientID)
             scope.launch {
-                val (sessionId, deviceId) = LoggyClient(loggyService).createSession(loggyContext)
-                sessionID = sessionId
-                isInitialized = true // create session was successful
+                Timber.d(
+                    "Loggy ${
+                        loggyContext.getDeviceHash(
+                            loggyContext.getApplicationID(), loggyContext
+                                .getDeviceID()
+                        )
+                    }"
+                )
+
+                //increment only first time.
+                sessionID = loggyClient.newInternalSessionID()
+
+                updateSessionIDForNoSession(sessionID)
+
+
+                val serverSessionID = loggyClient.createSession(loggyContext)
+                loggyClient.mapSessionId(sessionID, serverSessionID)
+                loggyClient.registerForLiveSession(serverSessionID)
                 startListeningForMessages()
+                isInitialized = true // create session was successful
+
+                sendPendingMessagesIfAny()
             }
         } catch (e: Exception) {
             Timber.e(e, "Failed to setup loggy")
@@ -97,7 +126,16 @@ private class LoggyImpl : LoggyInterface {
     private fun startListeningForMessages() {
         scope.launch {
             try {
-                loggyService.send(messageChannel.asFlow())
+                loggyService.send(messageChannel
+                    .asFlow()
+                    .map { item ->
+                        //set server session ID
+                        val sid = loggyClient.getServerSessionID(item.sessionid)
+                        Log.i(LOGGY_TAG, "$sid State: ${channel.getState(false)} ${item.msg}")
+                        item.toBuilder()
+                            .setSessionid(sid)
+                            .build()
+                    })
             } catch (e: Exception) {
                 Timber.e(e, "Failed to send message")
             }
@@ -125,6 +163,10 @@ private class LoggyImpl : LoggyInterface {
      *
      * rpc RegisterSend (SessionId) returns (google.protobuf.Empty) {}
      * rpc RegisterReceive (SessionId) returns (ReceiverId) {}
+     *
+     * App Session - 1 - Server Session ID - undefined - then - insertSession - 101
+     * App Session - 2 - Server Session ID - undefined - insertSession - 102
+     * App Session - 3 - Server Session ID - undefined - insertSession - 103
      */
 
     override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
@@ -142,6 +184,7 @@ private class LoggyImpl : LoggyInterface {
         val timestamp = Timestamp.newBuilder().setSeconds(time.epochSecond)
             .setNanos(time.nano).build()
 
+        // auto-increment
         val loggyMessage = Message
             .newBuilder()
             .setLevel(level)
@@ -150,8 +193,17 @@ private class LoggyImpl : LoggyInterface {
             .setTimestamp(timestamp)
             .build()
 
-        Log.d(LOGGY_TAG, "$sessionID State: ${channel.getState(false)} $message")
-        attemptToSendMessage(loggyMessage)
+        if (loggyMessage.sessionid == -1) {
+            holdMessageForNoSession(loggyMessage)
+        } else {
+            attemptToSendMessage(loggyMessage)
+        }
+    }
+
+    fun identity(userID: String?, email: String?, userName: String?) {
+        scope.launch {
+            loggyContext.saveIdentity(userID, email, userName)
+        }
     }
 
     private fun attemptToSendMessage(message: Message) {
@@ -170,10 +222,15 @@ private class LoggyImpl : LoggyInterface {
         messageChannel.offer(message)
         Log.e(
             LOGGY_TAG,
-            "Server Connected. Try to send saved messages. Messages Left ${logRepository
-                .messageCount()}"
+            "Server Connected. Try to send saved messages. Messages Left ${
+                logRepository
+                    .messageCount()
+            }"
         )
+        sendPendingMessagesIfAny()
+    }
 
+    private fun sendPendingMessagesIfAny() {
         if (logRepository.hasMessages()) {
             // This means some messages are backed up and this attempts to resend recursively
             var parsedMessage: Message? = null
@@ -185,7 +242,7 @@ private class LoggyImpl : LoggyInterface {
                 Log.e(LOGGY_TAG, e.message, e)
             }
             // remove any message from top.
-            // Its possible for a message to get corrupted.
+            // Its possible for a message to get corrupted.`
             logRepository.removeTop()
             if (parsedMessage != null) {
                 attemptToSendMessage(parsedMessage)
@@ -193,5 +250,21 @@ private class LoggyImpl : LoggyInterface {
         } else {
             Log.d(LOGGY_TAG, "Empty Messages")
         }
+    }
+
+    fun holdMessageForNoSession(message: Message) {
+        noSessionMessages.put(message)
+    }
+
+    fun updateSessionIDForNoSession(sessionID: Int) {
+        if (sessionID == -1) {
+            Timber.e(IllegalArgumentException("Invalid Session ID."), "Invalid Session ID")
+            return
+        }
+        noSessionMessages.forEach {
+            val m = it.toBuilder().setSessionid(sessionID).build()
+            attemptToSendMessage(m)
+        }
+        noSessionMessages.clear()
     }
 }

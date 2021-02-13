@@ -5,33 +5,53 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.os.Build
 import android.util.Log
+import androidx.datastore.core.DataStore
+import androidx.datastore.createDataStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import loggy.sh.DeviceProperties.androidAPILevel
+import loggy.sh.DeviceProperties.androidOSVersion
+import loggy.sh.DeviceProperties.appName
+import loggy.sh.DeviceProperties.appVersion
+import loggy.sh.DeviceProperties.deviceModel
+import loggy.sh.DeviceProperties.deviceName
+import loggy.sh.DeviceProperties.deviceType
 import loggy.sh.utils.Hashids
+import loggy.sh.utils.SettingsSerializer
 import sh.loggy.Device
+import sh.loggy.LoggySettings
 import timber.log.Timber
 import java.util.*
 import sh.loggy.Application as LoggyApp
 
-private const val appName = "application_name"
-private const val appVersion = "application_version"
-private const val deviceModel = "device_model"
-private const val deviceName = "device_name"
-private const val deviceType = "device_type"
-private const val androidOSVersion = "android_os_version"
-private const val androidAPILevel = "android_api_level"
-
 class LoggyContextForAndroid(
     private val application: Application,
-    private val userID: String,
-    private val dName: String
+    private val clientID: String
 ) : LoggyContext {
 
-    private val applicationID: String by lazy { "$userID/${application.packageName}" }
+    private val scope = CoroutineScope(Dispatchers.Default)
+    private val applicationID: String by lazy { "$clientID/${application.packageName}" }
 
-    override fun getApplication(): LoggyApp {
+    private val settingsDataStore: DataStore<LoggySettings.Settings> by lazy {
+        application.createDataStore(
+            fileName = "settings.pb",
+            serializer = SettingsSerializer
+        )
+    }
+
+    init {
+        scope.launch {
+            saveApplicationID(applicationID)
+        }
+    }
+
+    override suspend fun getApplication(): LoggyApp {
         val appName = if (application.applicationInfo.labelRes == 0) {
             application.applicationInfo.nonLocalizedLabel.toString()
         } else {
@@ -45,11 +65,42 @@ class LoggyContextForAndroid(
             .build()
     }
 
-    override fun getDevice(): Device {
+    override suspend fun saveApplicationID(appID: String) {
+        settingsDataStore.updateData { settings ->
+            settings.toBuilder().setAppId(appID).build()
+        }
+    }
+
+    override suspend fun getApplicationID(): String {
+        return settingsDataStore.data.firstOrNull()?.appId ?: applicationID
+    }
+
+    override suspend fun getDevice(): Device {
         return Device.newBuilder()
-            .setId(getDeviceID(application))
+            .setId(getDeviceID())
             .setDetails(deviceInformation(application))
             .build()
+    }
+
+    override suspend fun saveDeviceID(deviceID: String) {
+        Log.d(LOGGY_TAG, "Save Device ID")
+        settingsDataStore.updateData { settings ->
+            settings.toBuilder().setDeviceId(deviceID).build()
+        }
+    }
+
+    override suspend fun saveIdentity(userId: String?, email: String?, userName: String?) {
+        settingsDataStore.updateData { settings ->
+            val sUserId = userId ?: settings.userId
+            val sEmail = email ?: settings.email
+            val sUserName = userName ?: settings.userName
+
+            settings.toBuilder()
+                .setUserId(sUserId)
+                .setEmail(sEmail)
+                .setUserName(sUserName)
+                .build()
+        }
     }
 
     override fun getDeviceHash(appID: String, deviceID: String): String {
@@ -58,28 +109,20 @@ class LoggyContextForAndroid(
         return "$appHash/$deviceHash"
     }
 
-    private fun getDeviceID(context: Context): String {
-        val preferences = context.getSharedPreferences("loggy", Context.MODE_PRIVATE)
-        var deviceId = preferences.getString("device_id", null)
-        if (deviceId == null) {
-            deviceId = UUID.randomUUID().toString().apply {
-                Log.d(LOGGY_TAG, "Save New ID")
-                saveDevice(context, this)
-            }
+    override suspend fun getDeviceID(): String {
+        var deviceId = settingsDataStore.data.firstOrNull()?.deviceId
+        if (deviceId.isNullOrEmpty()) {
+            deviceId = UUID.randomUUID().toString()
+            saveDeviceID(deviceId)
         }
         return deviceId
-    }
-
-    private fun saveDevice(context: Context, deviceId: String) {
-        val preferences = context.getSharedPreferences("loggy", Context.MODE_PRIVATE)
-        preferences.edit().putString("device_id", deviceId).apply()
     }
 
     private fun deviceInformation(context: Context): String {
         val map: MutableMap<String, String> = mutableMapOf()
 
         try {
-            map[deviceName] = dName
+            map[deviceName] = ""
             val applicationInfo = context.applicationInfo
             val stringId = applicationInfo.labelRes
             map[appName] = if (stringId == 0) {
