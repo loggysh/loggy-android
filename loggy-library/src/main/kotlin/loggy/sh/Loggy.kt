@@ -98,7 +98,9 @@ private class LoggyImpl : LoggyInterface {
 
                 //increment only first time.
                 sessionID = loggyClient.newInternalSessionID()
+
                 updateSessionIDForNoSession(sessionID)
+
 
                 val serverSessionID = loggyClient.createSession(loggyContext)
                 loggyClient.mapSessionId(sessionID, serverSessionID)
@@ -106,6 +108,7 @@ private class LoggyImpl : LoggyInterface {
                 startListeningForMessages()
                 isInitialized = true // create session was successful
 
+                sendPendingMessagesIfAny()
             }
         } catch (e: Exception) {
             Timber.e(e, "Failed to setup loggy")
@@ -128,7 +131,7 @@ private class LoggyImpl : LoggyInterface {
                     .map { item ->
                         //set server session ID
                         val sid = loggyClient.getServerSessionID(item.sessionid)
-                        Log.d(LOGGY_TAG, "$sid State: ${channel.getState(false)} $item")
+                        Log.i(LOGGY_TAG, "$sid State: ${channel.getState(false)} ${item.msg}")
                         item.toBuilder()
                             .setSessionid(sid)
                             .build()
@@ -224,7 +227,10 @@ private class LoggyImpl : LoggyInterface {
                     .messageCount()
             }"
         )
+        sendPendingMessagesIfAny()
+    }
 
+    private fun sendPendingMessagesIfAny() {
         if (logRepository.hasMessages()) {
             // This means some messages are backed up and this attempts to resend recursively
             var parsedMessage: Message? = null

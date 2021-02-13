@@ -40,12 +40,17 @@ class LogRepository(val application: Application) {
      */
     private val file by lazy { File("${application.filesDir.absolutePath}/logs.txt") }
     private val queueFile = QueueFile.Builder(file).build()
-    private val objectFile = ObjectQueue.create(queueFile, MessageConverter())
+    private var useInMemory = false
     private val inMemoryQueue = ObjectQueue.createInMemory<Message>()
+    private val objectFile =
+        if (useInMemory)
+            inMemoryQueue
+        else
+            ObjectQueue.create(queueFile, MessageConverter())
 
     fun addMessage(message: Message) {
         try {
-            inMemoryQueue.add(message)
+            objectFile.add(message)
         } catch (e: Exception) {
             Log.e(LOGGY_TAG, e.message, e)
         }
@@ -53,7 +58,7 @@ class LogRepository(val application: Application) {
 
     fun getMessageTop(): Message? {
         try {
-            return inMemoryQueue.peek()
+            return objectFile.peek()
         } catch (e: Exception) {
             Log.e(LOGGY_TAG, e.message, e)
         }
@@ -62,18 +67,18 @@ class LogRepository(val application: Application) {
 
     fun removeTop() {
         try {
-            inMemoryQueue.remove()
+            objectFile.remove()
         } catch (e: Exception) {
             Log.e(LOGGY_TAG, e.message, e)
         }
     }
 
     fun hasMessages(): Boolean {
-        return !inMemoryQueue.isEmpty
+        return !objectFile.isEmpty
     }
 
     fun messageCount(): Int {
-        return inMemoryQueue.size()
+        return objectFile.size()
     }
 
 }
