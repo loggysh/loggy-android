@@ -106,7 +106,7 @@ class LoggyContextForAndroid(
     override fun getDeviceHash(appID: String, deviceID: String): String {
         val appHash = Hashids(appID, 6).encode(1, 2, 3)
         val deviceHash = Hashids(deviceID, 6).encode(4, 4, 4)
-        return "$appHash/$deviceHash"
+        return "$appHash-$deviceHash"
     }
 
     override suspend fun getDeviceID(): String {
