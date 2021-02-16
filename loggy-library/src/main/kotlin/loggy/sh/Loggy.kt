@@ -28,6 +28,7 @@ const val LOGGY_TAG = "Loggy"
 private interface LoggyInterface {
     fun setup(application: Application, clientID: String)
     fun log(priority: Int, tag: String?, message: String, t: Throwable?)
+    suspend fun loggyDeviceUrl(): String
 }
 
 object Loggy : LoggyInterface {
@@ -42,6 +43,10 @@ object Loggy : LoggyInterface {
         loggyImpl.log(priority, tag, message, t)
     }
 
+    override suspend fun loggyDeviceUrl(): String {
+        return loggyImpl.loggyDeviceUrl()
+    }
+
     /**
      * Cannot overide from interface. Since Interface defaults overriding is not allowed.
      */
@@ -51,6 +56,7 @@ object Loggy : LoggyInterface {
 }
 
 private class LoggyImpl : LoggyInterface {
+    private val homeUrl = "www.beta.loggy.sh/"
     private val url = URL(BuildConfig.loggyUrl)
     private val port = if (url.port == -1) url.defaultPort else url.port
 
@@ -87,20 +93,11 @@ private class LoggyImpl : LoggyInterface {
         try {
             loggyContext = LoggyContextForAndroid(application, clientID)
             scope.launch {
-                Timber.d(
-                    "Loggy ${
-                        loggyContext.getDeviceHash(
-                            loggyContext.getApplicationID(), loggyContext
-                                .getDeviceID()
-                        )
-                    }"
-                )
 
                 //increment only first time.
                 sessionID = loggyClient.newInternalSessionID()
 
                 updateSessionIDForNoSession(sessionID)
-
 
                 val serverSessionID = loggyClient.createSession(loggyContext)
                 loggyClient.mapSessionId(sessionID, serverSessionID)
@@ -113,6 +110,12 @@ private class LoggyImpl : LoggyInterface {
         } catch (e: Exception) {
             Timber.e(e, "Failed to setup loggy")
         }
+    }
+
+    override suspend fun loggyDeviceUrl(): String {
+        return homeUrl + loggyContext.getDeviceHash(
+            loggyContext.getApplicationID(), loggyContext.getDeviceID()
+        )
     }
 
     private fun installExceptionHandler() { // TODO Platform dependent

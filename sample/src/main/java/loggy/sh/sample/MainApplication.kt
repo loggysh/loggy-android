@@ -22,7 +22,7 @@ class MainApplication : Application() {
         Timber.plant(LoggyTree())
 
         Loggy.identity(
-            userName = "Lady Ada Lovelace"
+            userName = "Ada Lovelace"
         )
 
         ProcessLifecycleOwner.get().lifecycle.addObserver(ForegroundBackgroundObserver())
