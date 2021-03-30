@@ -81,9 +81,9 @@ dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-core:1.0.0-RC"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.2"
 
-    implementation "androidx.datastore:datastore-preferences:1.0.0-alpha06"
+    implementation "androidx.datastore:datastore-preferences:1.0.0-alpha08"
 
     //logging
     implementation "com.jakewharton.timber:timber:4.7.1"
@@ -100,7 +100,6 @@ dependencies {
 
     implementation 'com.squareup.tape2:tape:2.0.0-beta1'
     implementation 'com.squareup.okio:okio:2.10.0'
-    implementation 'com.github.0xshamil:java-xid:1.0.0'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
@@ -118,8 +117,11 @@ mavenPublish {
         uploadArchives {
             releaseRepositoryUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
             snapshotRepositoryUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
-            repositoryUsername = hasProperty('SONATYPE_LOGGY_USERNAME') ? SONATYPE_LOGGY_USERNAME : ""
-            repositoryPassword = hasProperty('SONATYPE_LOGGY_PASSWORD') ? SONATYPE_LOGGY_PASSWORD : ""
+//            repositoryUsername = hasProperty('SONATYPE_LOGGY_USERNAME') ? SONATYPE_LOGGY_USERNAME : ""
+//            repositoryPassword = hasProperty('SONATYPE_LOGGY_PASSWORD') ? SONATYPE_LOGGY_PASSWORD : ""
+
+            repositoryUsername = SONATYPE_LOGGY_USERNAME
+            repositoryPassword = SONATYPE_LOGGY_PASSWORD
         }
     }
 }

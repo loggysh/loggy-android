@@ -28,6 +28,7 @@ const val LOGGY_TAG = "Loggy"
 private interface LoggyInterface {
     fun setup(application: Application, clientID: String)
     fun log(priority: Int, tag: String?, message: String, t: Throwable?)
+    fun interceptException(onException: (exception: Throwable) -> Boolean)
     suspend fun loggyDeviceUrl(): String
 }
 
@@ -53,10 +54,14 @@ object Loggy : LoggyInterface {
     fun identity(userID: String? = "", email: String? = "", userName: String? = "") {
         loggyImpl.identity(userID, email, userName)
     }
+
+    override fun interceptException(onException: (exception: Throwable) -> Boolean) {
+        loggyImpl.interceptException(onException)
+    }
 }
 
 private class LoggyImpl : LoggyInterface {
-    private val homeUrl = "www.beta.loggy.sh/"
+    private val homeUrl = "loggy.sh"
     private val url = URL(BuildConfig.loggyUrl)
     private val port = if (url.port == -1) url.defaultPort else url.port
 
@@ -78,6 +83,7 @@ private class LoggyImpl : LoggyInterface {
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
     private var sessionID: Int = -1
     private var feature: String? = null
+    private var onInterceptException: (e: Throwable) -> Boolean = { false }
 
     private val noSessionMessages = LinkedBlockingQueue<Message>()
     private lateinit var loggyClient: LoggyClient
@@ -113,7 +119,7 @@ private class LoggyImpl : LoggyInterface {
     }
 
     override suspend fun loggyDeviceUrl(): String {
-        return homeUrl + loggyContext.getDeviceHash(
+        return "$homeUrl/d/" + loggyContext.getDeviceHash(
             loggyContext.getApplicationID(), loggyContext.getDeviceID()
         )
     }
@@ -122,7 +128,10 @@ private class LoggyImpl : LoggyInterface {
         val defaultUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, e ->
             log(100, "Thread: ${thread.name}", e.message ?: "Unknown Message", e)
-            defaultUncaughtExceptionHandler?.uncaughtException(thread, e) // Thanks Ragunath.
+
+            if (!onInterceptException(e)) {
+                defaultUncaughtExceptionHandler?.uncaughtException(thread, e) // Thanks Ragunath.
+            }
         }
     }
 
@@ -201,6 +210,10 @@ private class LoggyImpl : LoggyInterface {
         } else {
             attemptToSendMessage(loggyMessage)
         }
+    }
+
+    override fun interceptException(onException: (exception: Throwable) -> Boolean) {
+        onInterceptException = onException
     }
 
     fun identity(userID: String?, email: String?, userName: String?) {

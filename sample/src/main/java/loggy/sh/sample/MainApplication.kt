@@ -1,6 +1,7 @@
 package loggy.sh.sample
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.OnLifecycleEvent
@@ -17,7 +18,7 @@ class MainApplication : Application() {
 
         Loggy.setup(
             this@MainApplication,
-            "abae31cc-c693-4c1f-a66d-af61232cd716"
+            "c7d4e293-ac2d-4d56-8fcf-4064e7238800"
         )
         Timber.plant(LoggyTree())
 
@@ -25,6 +26,10 @@ class MainApplication : Application() {
             userName = "Ada Lovelace"
         )
 
+        Loggy.interceptException {
+            Log.d("LoggyIntercept", "Failed")
+            true
+        }
         ProcessLifecycleOwner.get().lifecycle.addObserver(ForegroundBackgroundObserver())
     }
 
