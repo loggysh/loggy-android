@@ -18,7 +18,7 @@ class MainApplication : Application() {
 
         Loggy.setup(
             this@MainApplication,
-            hostUrl = "http://10.0.2.2",
+            hostUrl = "http://loggy.sh",
             clientID = "c7d4e293-ac2d-4d56-8fcf-4064e7238800"
         )
         Timber.plant(LoggyTree())
