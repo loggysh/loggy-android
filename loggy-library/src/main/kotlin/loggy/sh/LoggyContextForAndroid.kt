@@ -6,7 +6,7 @@ import android.content.pm.PackageInfo
 import android.os.Build
 import android.util.Log
 import androidx.datastore.core.DataStore
-import androidx.datastore.createDataStore
+import androidx.datastore.dataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -38,12 +38,10 @@ class LoggyContextForAndroid(
     private val scope = CoroutineScope(Dispatchers.Default)
     private val applicationID: String by lazy { "$clientID/${application.packageName}" }
 
-    private val settingsDataStore: DataStore<LoggySettings.Settings> by lazy {
-        application.createDataStore(
-            fileName = "settings.pb",
-            serializer = SettingsSerializer
-        )
-    }
+    private val Context.settingsDataStore: DataStore<LoggySettings.Settings> by dataStore(
+        fileName = "settings.pb",
+        serializer = SettingsSerializer
+    )
 
     init {
         scope.launch {
@@ -66,13 +64,13 @@ class LoggyContextForAndroid(
     }
 
     override suspend fun saveApplicationID(appID: String) {
-        settingsDataStore.updateData { settings ->
+        application.settingsDataStore.updateData { settings ->
             settings.toBuilder().setAppId(appID).build()
         }
     }
 
     override suspend fun getApplicationID(): String {
-        return settingsDataStore.data.firstOrNull()?.appId ?: applicationID
+        return application.settingsDataStore.data.firstOrNull()?.appId ?: applicationID
     }
 
     override suspend fun getDevice(): Device {
@@ -84,13 +82,13 @@ class LoggyContextForAndroid(
 
     override suspend fun saveDeviceID(deviceID: String) {
         Log.d(LOGGY_TAG, "Save Device ID")
-        settingsDataStore.updateData { settings ->
+        application.settingsDataStore.updateData { settings ->
             settings.toBuilder().setDeviceId(deviceID).build()
         }
     }
 
     override suspend fun saveIdentity(userId: String?, email: String?, userName: String?) {
-        settingsDataStore.updateData { settings ->
+        application.settingsDataStore.updateData { settings ->
             val sUserId = userId ?: settings.userId
             val sEmail = email ?: settings.email
             val sUserName = userName ?: settings.userName
@@ -110,7 +108,7 @@ class LoggyContextForAndroid(
     }
 
     override suspend fun getDeviceID(): String {
-        var deviceId = settingsDataStore.data.firstOrNull()?.deviceId
+        var deviceId = application.settingsDataStore.data.firstOrNull()?.deviceId
         if (deviceId.isNullOrEmpty()) {
             deviceId = UUID.randomUUID().toString()
             saveDeviceID(deviceId)

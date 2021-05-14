@@ -14,7 +14,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import loggy.sh.loggy.BuildConfig
 import sh.loggy.LoggyServiceGrpcKt
 import sh.loggy.Message
 import timber.log.Timber
@@ -26,7 +25,7 @@ import java.util.concurrent.LinkedBlockingQueue
 const val LOGGY_TAG = "Loggy"
 
 private interface LoggyInterface {
-    fun setup(application: Application, clientID: String)
+    fun setup(application: Application, hostUrl: String, clientID: String)
     fun log(priority: Int, tag: String?, message: String, t: Throwable?)
     fun interceptException(onException: (exception: Throwable) -> Boolean)
     suspend fun loggyDeviceUrl(): String
@@ -36,8 +35,8 @@ object Loggy : LoggyInterface {
 
     private val loggyImpl: LoggyImpl by lazy { LoggyImpl() }
 
-    override fun setup(application: Application, clientID: String) {
-        loggyImpl.setup(application, clientID)
+    override fun setup(application: Application, hostUrl: String, clientID: String) {
+        loggyImpl.setup(application, hostUrl, clientID)
     }
 
     override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
@@ -61,21 +60,13 @@ object Loggy : LoggyInterface {
 }
 
 private class LoggyImpl : LoggyInterface {
-    private val homeUrl = "loggy.sh"
-    private val url = URL(BuildConfig.loggyUrl)
-    private val port = if (url.port == -1) url.defaultPort else url.port
+//    private val homeUrl = "loggy.sh"
+//    private val url = URL(BuildConfig.loggyUrl)
+//    private val port = if (url.port == -1) url.defaultPort else url.port
 
     private var isInitialized = false
-
-    private val channel: ManagedChannel = ManagedChannelBuilder.forAddress(url.host, port)
-        .apply {
-            Log.i(LOGGY_TAG, "Connecting to ${url.host}:$port")
-            if (url.protocol == "https") {
-                useTransportSecurity()
-            } else {
-                usePlaintext()
-            }
-        }.build()
+    private lateinit var url: URL
+    private lateinit var channel: ManagedChannel
 
     private val loggyService by lazy { LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel) }
     private val messageChannel = BroadcastChannel<Message>(Channel.BUFFERED)
@@ -90,7 +81,20 @@ private class LoggyImpl : LoggyInterface {
     private lateinit var logRepository: LogRepository
     private lateinit var loggyContext: LoggyContextForAndroid
 
-    override fun setup(application: Application, clientID: String) {
+    override fun setup(application: Application, hostUrl: String, clientID: String) {
+        this.url = URL(hostUrl)
+        val port = 50111
+        this.channel =
+            ManagedChannelBuilder.forAddress(url.host, port)
+                .apply {
+                    Log.i(LOGGY_TAG, "Connecting to ${url.host}:${port}")
+                    if (url.protocol == "https") {
+                        useTransportSecurity()
+                    } else {
+                        usePlaintext()
+                    }
+                }.build()
+
         logRepository = LogRepository(application)
         loggyClient = LoggyClient(application, loggyService)
 
@@ -119,7 +123,7 @@ private class LoggyImpl : LoggyInterface {
     }
 
     override suspend fun loggyDeviceUrl(): String {
-        return "$homeUrl/d/" + loggyContext.getDeviceHash(
+        return "${url.host}/d/" + loggyContext.getDeviceHash(
             loggyContext.getApplicationID(), loggyContext.getDeviceID()
         )
     }

@@ -2,7 +2,7 @@ package loggy.sh
 
 import android.content.Context
 import androidx.datastore.core.DataStore
-import androidx.datastore.createDataStore
+import androidx.datastore.dataStore
 import kotlinx.coroutines.flow.firstOrNull
 import loggy.sh.utils.SessionPairSerializer
 import sh.loggy.LoggyServiceGrpcKt
@@ -22,12 +22,11 @@ class LoggyClient(
             .setDeviceid(deviceID)
             .build()
 
-    private val sessionsDataStore: DataStore<LoggySettings.SessionPair> by lazy {
-        context.createDataStore(
-            fileName = "sessions.pb",
-            serializer = SessionPairSerializer
-        )
-    }
+    private val Context.sessionsDataStore: DataStore<LoggySettings.SessionPair> by dataStore(
+        fileName = "sessions.pb",
+        serializer = SessionPairSerializer
+    )
+
 
     suspend fun createSession(loggyContext: LoggyContext): Int {
         Timber.d("Register For Application")
@@ -52,10 +51,10 @@ class LoggyClient(
     }
 
     suspend fun newInternalSessionID(): Int {
-        val newSessionID = (sessionsDataStore.data.firstOrNull()?.sessionCounter ?: 0) + 1
+        val newSessionID = (context.sessionsDataStore.data.firstOrNull()?.sessionCounter ?: 0)+ 1
 
         //add to store
-        sessionsDataStore.updateData { sessions ->
+        context.sessionsDataStore.updateData { sessions ->
             sessions.toBuilder().setSessionCounter(newSessionID)
                 .putSessions(newSessionID, LoggySettings.SessionIdentifier.getDefaultInstance())
                 .build()
@@ -64,7 +63,7 @@ class LoggyClient(
     }
 
     suspend fun mapSessionId(currentSession: Int, sid: Int) {
-        sessionsDataStore.updateData { sessions ->
+        context.sessionsDataStore.updateData { sessions ->
             val map = sessions.sessionsMap
             var identifier = map[currentSession]
             if (identifier != null && identifier.id == 0) {
@@ -81,7 +80,7 @@ class LoggyClient(
     }
 
     suspend fun getServerSessionID(currentSession: Int): Int {
-        return sessionsDataStore.data.firstOrNull()?.sessionsMap?.get(currentSession)?.id ?: 0
+        return context.sessionsDataStore.data.firstOrNull()?.sessionsMap?.get(currentSession)?.id ?: 0
     }
 
 }
