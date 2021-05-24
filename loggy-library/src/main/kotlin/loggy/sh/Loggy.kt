@@ -4,9 +4,7 @@ import android.app.Application
 import android.util.Log
 import com.google.protobuf.InvalidProtocolBufferException
 import com.google.protobuf.Timestamp
-import io.grpc.ConnectivityState
-import io.grpc.ManagedChannel
-import io.grpc.ManagedChannelBuilder
+import io.grpc.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BroadcastChannel
@@ -68,7 +66,7 @@ private class LoggyImpl : LoggyInterface {
     private lateinit var url: URL
     private lateinit var channel: ManagedChannel
 
-    private val loggyService by lazy { LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel) }
+    private lateinit var loggyService: LoggyServiceGrpcKt.LoggyServiceCoroutineStub
     private val messageChannel = BroadcastChannel<Message>(Channel.BUFFERED)
 
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
@@ -84,25 +82,38 @@ private class LoggyImpl : LoggyInterface {
     override fun setup(application: Application, hostUrl: String, clientID: String) {
         this.url = URL(hostUrl)
         val port = 50111
-        this.channel =
-            ManagedChannelBuilder.forAddress(url.host, port)
-                .apply {
-                    Log.i(LOGGY_TAG, "Connecting to ${url.host}:${port}")
-                    if (url.protocol == "https") {
-                        useTransportSecurity()
-                    } else {
-                        usePlaintext()
-                    }
-                }.build()
-
-        logRepository = LogRepository(application)
-        loggyClient = LoggyClient(application, loggyService)
-
         installExceptionHandler()
 
-        Log.d("Loggy", "$hostUrl ${url.host}  $clientID")
         try {
+            Log.i(LOGGY_TAG, "Connecting to ${url.host}:${port}")
+            this.channel =
+                ManagedChannelBuilder.forAddress(url.host, port)
+                    .apply {
+                        if (url.protocol == "https") {
+                            useTransportSecurity()
+                        } else {
+                            usePlaintext()
+                        }
+                    }
+                    .intercept(object : ClientInterceptor {
+                        override fun <ReqT : Any?, RespT : Any?> interceptCall(
+                            method: MethodDescriptor<ReqT, RespT>?,
+                            callOptions: CallOptions?,
+                            next: io.grpc.Channel?
+                        ): ClientCall<ReqT, RespT> {
+                            Log.d(LOGGY_TAG, "${java.lang.Exception().printStackTrace()}")
+                            return next!!.newCall(method, callOptions)
+                        }
+
+                    })
+                    .build()
+            logRepository = LogRepository(application)
+            loggyService = LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel)
+            loggyClient = LoggyClient(application, loggyService)
+
             loggyContext = LoggyContextForAndroid(application, clientID)
+
+            Log.i(LOGGY_TAG, "Setup data, context and client")
             scope.launch {
 
                 //increment only first time.
@@ -110,13 +121,26 @@ private class LoggyImpl : LoggyInterface {
 
                 updateSessionIDForNoSession(sessionID)
 
-                val serverSessionID = loggyClient.createSession(loggyContext)
-                loggyClient.mapSessionId(sessionID, serverSessionID)
-                loggyClient.registerForLiveSession(serverSessionID)
-                startListeningForMessages()
-                isInitialized = true // create session was successful
+                var isSuccess = true
+                if (channel.getState(true) != ConnectivityState.READY) {
+                    isSuccess = false
+                }
 
-                sendPendingMessagesIfAny()
+                if (isSuccess) {
+                    val serverSessionID = loggyClient.createSession(loggyContext).runCatching {
+                        this
+                    }
+
+                    if (serverSessionID.isSuccess) {
+                        loggyClient.mapSessionId(sessionID, serverSessionID.getOrDefault(sessionID))
+                        loggyClient.registerForLiveSession(serverSessionID.getOrDefault(sessionID))
+                        startListeningForMessages()
+                        isInitialized = true // create session was successful
+                        sendPendingMessagesIfAny()
+                    } else {
+                        Log.e(LOGGY_TAG, LOGGY_TAG, serverSessionID.exceptionOrNull())
+                    }
+                }
             }
         } catch (e: Exception) {
             Timber.e(e, "Failed to setup loggy")
@@ -142,6 +166,8 @@ private class LoggyImpl : LoggyInterface {
 
     private fun startListeningForMessages() {
         scope.launch {
+            Log.e(LOGGY_TAG, "Channel ${Thread.currentThread().name}")
+
             try {
                 loggyService.send(messageChannel
                     .asFlow()
@@ -240,7 +266,7 @@ private class LoggyImpl : LoggyInterface {
             return
         }
 
-        messageChannel.offer(message)
+        messageChannel.trySend(message).isSuccess
         Log.e(
             LOGGY_TAG,
             "Server Connected. Try to send saved messages. Messages Left ${
