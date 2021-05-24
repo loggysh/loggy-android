@@ -56,6 +56,7 @@ class LoggyContextForAndroid(
             application.getString(application.applicationInfo.labelRes)
         }
 
+        Timber.d("Loggy - Client $applicationID")
         return LoggyApp.newBuilder()
             .setIcon("")
             .setId(applicationID)

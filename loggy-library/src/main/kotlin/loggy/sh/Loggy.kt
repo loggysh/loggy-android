@@ -100,6 +100,7 @@ private class LoggyImpl : LoggyInterface {
 
         installExceptionHandler()
 
+        Log.d("Loggy", "$hostUrl ${url.host}  $clientID")
         try {
             loggyContext = LoggyContextForAndroid(application, clientID)
             scope.launch {

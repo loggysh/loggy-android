@@ -18,8 +18,8 @@ class MainApplication : Application() {
 
         Loggy.setup(
             this@MainApplication,
-            hostUrl = "http://loggy.sh",
-            clientID = "c7d4e293-ac2d-4d56-8fcf-4064e7238800"
+            hostUrl = "http://staging.loggy.sh",
+            clientID = "d4d7f2b0-7833-4d91-bfa2-4cdfaacb68df"
         )
         Timber.plant(LoggyTree())
 
@@ -28,7 +28,7 @@ class MainApplication : Application() {
         )
 
         Loggy.interceptException {
-            Log.d("LoggyIntercept", "Failed")
+            Log.d("LoggyIntercept", "Failed", it)
             true
         }
         ProcessLifecycleOwner.get().lifecycle.addObserver(ForegroundBackgroundObserver())

@@ -32,7 +32,7 @@ class LoggyClient(
         Timber.d("Register For Application")
         val loggyAppWithId = loggyService.getOrInsertApplication(loggyContext.getApplication())
 
-        Timber.d("Register For Device")
+        Timber.d("Register For Device $loggyAppWithId")
         val deviceWithId = loggyService.getOrInsertDevice(loggyContext.getDevice())
 
         Timber.d("Register For Session")
