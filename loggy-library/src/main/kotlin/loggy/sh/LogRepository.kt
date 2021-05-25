@@ -58,6 +58,9 @@ class LogRepository(val application: Application) {
 
     fun getMessageTop(): Message? {
         try {
+            if (objectFile.file()?.size() == 0 || objectFile.isEmpty || objectFile.size() < 0) {
+                return null
+            }
             return objectFile.peek()
         } catch (e: Exception) {
             Log.e(LOGGY_TAG, e.message, e)

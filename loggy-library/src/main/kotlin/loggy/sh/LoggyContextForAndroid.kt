@@ -5,8 +5,6 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.os.Build
 import android.util.Log
-import androidx.datastore.core.DataStore
-import androidx.datastore.dataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -23,9 +21,7 @@ import loggy.sh.DeviceProperties.deviceModel
 import loggy.sh.DeviceProperties.deviceName
 import loggy.sh.DeviceProperties.deviceType
 import loggy.sh.utils.Hashids
-import loggy.sh.utils.SettingsSerializer
 import sh.loggy.Device
-import sh.loggy.LoggySettings
 import timber.log.Timber
 import java.util.*
 import sh.loggy.Application as LoggyApp
@@ -37,11 +33,6 @@ class LoggyContextForAndroid(
 
     private val scope = CoroutineScope(Dispatchers.Default)
     private val applicationID: String by lazy { "$clientID/${application.packageName}" }
-
-    private val Context.settingsDataStore: DataStore<LoggySettings.Settings> by dataStore(
-        fileName = "settings.pb",
-        serializer = SettingsSerializer
-    )
 
     init {
         scope.launch {

@@ -54,7 +54,7 @@ protobuf {
     protoc { artifact = 'com.google.protobuf:protoc:3.12.2' }
     plugins {
         grpc {
-            artifact = 'io.grpc:protoc-gen-grpc-java:1.31.1' // CURRENT_GRPC_VERSION
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.38.0' // CURRENT_GRPC_VERSION
         }
         grpckt {
             artifact = "io.grpc:protoc-gen-grpc-kotlin:0.1.5"
