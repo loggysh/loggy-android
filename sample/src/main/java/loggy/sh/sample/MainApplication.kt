@@ -15,6 +15,7 @@ class MainApplication : Application() {
         super.onCreate()
 
         Timber.plant(Timber.DebugTree())
+        Timber.plant(LoggyTree())
 
         setup()
         ProcessLifecycleOwner.get().lifecycle.addObserver(ForegroundBackgroundObserver())
@@ -26,7 +27,6 @@ class MainApplication : Application() {
             hostUrl = "http://staging.loggy.sh",
             clientID = "d4d7f2b0-7833-4d91-bfa2-4cdfaacb68df"
         )
-        Timber.plant(LoggyTree())
 
         Loggy.identity(
             userName = "Ada Lovelace"
