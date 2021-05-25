@@ -40,7 +40,7 @@ class LogRepository(val application: Application) {
      */
     private val file by lazy { File("${application.filesDir.absolutePath}/logs.txt") }
     private val queueFile = QueueFile.Builder(file).build()
-    private var useInMemory = false
+    private var useInMemory = true
     private val inMemoryQueue = ObjectQueue.createInMemory<Message>()
     private val objectFile =
         if (useInMemory)

@@ -91,7 +91,7 @@ private class LoggyImpl : LoggyInterface {
     private lateinit var loggyService: LoggyServiceGrpcKt.LoggyServiceCoroutineStub
     private val messageChannel = BroadcastChannel<Message>(Channel.BUFFERED)
 
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
+    private var scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
     private var sessionID: Int = -1
     private var feature: String? = null
     private var onInterceptException: (e: Throwable) -> Boolean = { false }
@@ -102,6 +102,9 @@ private class LoggyImpl : LoggyInterface {
     private lateinit var loggyContext: LoggyContextForAndroid
 
     override fun setup(application: Application, hostUrl: String, clientID: String) {
+        //close any existing connection
+        close()
+
         if (URLUtil.isNetworkUrl(hostUrl) || hostUrl.isNotEmpty()) {
             this.url = URL(hostUrl)
         } else {
@@ -166,9 +169,10 @@ private class LoggyImpl : LoggyInterface {
     override fun close() {
         Log.d(LOGGY_TAG, "Closing Loggy")
         if (this::loggyClient.isInitialized) {
-            scope.cancel()
             channel.shutdownNow()
             loggyClient.close()
+            scope.cancel()
+            scope = CoroutineScope(Dispatchers.IO)
         }
     }
 
@@ -194,7 +198,6 @@ private class LoggyImpl : LoggyInterface {
             return
         }
         scope.launch {
-
             try {
                 loggyService.send(messageChannel
                     .asFlow()
