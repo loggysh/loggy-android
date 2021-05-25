@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Loggy</string>
+    <string name="app_name">Loggy Sample</string>
     <string name="first">First</string>
     <string name="third">Third</string>
     <string name="second">Second</string>

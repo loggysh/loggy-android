@@ -1,6 +1,7 @@
 package loggy.sh
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.dataStore
 import kotlinx.coroutines.flow.firstOrNull
@@ -12,7 +13,7 @@ import sh.loggy.SessionId
 import timber.log.Timber
 
 class LoggyClient(
-    private val context: Context,
+    private val sessionsDataStore: DataStore<LoggySettings.SessionPair>,
     private val loggyService: LoggyServiceGrpcKt.LoggyServiceCoroutineStub
 ) {
 
@@ -22,17 +23,11 @@ class LoggyClient(
             .setDeviceid(deviceID)
             .build()
 
-    private val Context.sessionsDataStore: DataStore<LoggySettings.SessionPair> by dataStore(
-        fileName = "sessions.pb",
-        serializer = SessionPairSerializer
-    )
-
-
     suspend fun createSession(loggyContext: LoggyContext): Int {
         Timber.d("Register For Application")
         val loggyAppWithId = loggyService.getOrInsertApplication(loggyContext.getApplication())
 
-        Timber.d("Register For Device")
+        Timber.d("Register For Device $loggyAppWithId")
         val deviceWithId = loggyService.getOrInsertDevice(loggyContext.getDevice())
 
         Timber.d("Register For Session")
@@ -51,10 +46,10 @@ class LoggyClient(
     }
 
     suspend fun newInternalSessionID(): Int {
-        val newSessionID = (context.sessionsDataStore.data.firstOrNull()?.sessionCounter ?: 0)+ 1
+        val newSessionID = (sessionsDataStore.data.firstOrNull()?.sessionCounter ?: 0) + 1
 
         //add to store
-        context.sessionsDataStore.updateData { sessions ->
+        sessionsDataStore.updateData { sessions ->
             sessions.toBuilder().setSessionCounter(newSessionID)
                 .putSessions(newSessionID, LoggySettings.SessionIdentifier.getDefaultInstance())
                 .build()
@@ -63,7 +58,7 @@ class LoggyClient(
     }
 
     suspend fun mapSessionId(currentSession: Int, sid: Int) {
-        context.sessionsDataStore.updateData { sessions ->
+        sessionsDataStore.updateData { sessions ->
             val map = sessions.sessionsMap
             var identifier = map[currentSession]
             if (identifier != null && identifier.id == 0) {
@@ -80,7 +75,12 @@ class LoggyClient(
     }
 
     suspend fun getServerSessionID(currentSession: Int): Int {
-        return context.sessionsDataStore.data.firstOrNull()?.sessionsMap?.get(currentSession)?.id ?: 0
+        return sessionsDataStore.data.firstOrNull()?.sessionsMap?.get(currentSession)?.id
+            ?: 0
+    }
+
+    fun close() {
+        Log.d(LOGGY_TAG, "Closing Client")
     }
 
 }

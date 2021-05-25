@@ -2,6 +2,12 @@
 
 Android Client for Loggy
 
+###Publish Loggy Android to Maven (Sonatype - Nexus)
+```
+./gradlew publish --no-daemon --no-parallel
+./gradlew closeAndReleaseRepository
+```
+
 ###Install Loggy library in build.gradle [Search Maven For Latest Version](https://search.maven.org/artifact/sh.loggy/loggy)
 ```groovy
     implementation 'sh.loggy:loggy:<version>'

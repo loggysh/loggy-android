@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import loggy.sh.Loggy
+import loggy.sh.sample.MainApplication
 import loggy.sh.sample.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -29,6 +30,10 @@ class MainActivity : AppCompatActivity() {
             scope.launch(Dispatchers.Main) {
                 binding.url.text = url
             }
+        }
+
+        binding.setup.setOnClickListener {
+            (applicationContext as MainApplication).setup()
         }
         viewModel.intentions.observe(this, {
             binding.firstFragmentContainer.isVisible = it == ViewIntention.GoToFirst
