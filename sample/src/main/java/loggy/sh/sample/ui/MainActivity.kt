@@ -1,13 +1,13 @@
 package loggy.sh.sample.ui
 
 import android.os.Bundle
-import android.text.Html
 import android.view.LayoutInflater
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import loggy.sh.Loggy
 import loggy.sh.sample.MainApplication
@@ -32,9 +32,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        binding.setup.setOnClickListener {
+        binding.changeHostButton.setOnClickListener {
             (applicationContext as MainApplication).setup()
         }
+
+        scope.launch {
+            Loggy.status()
+                .collect {
+                    binding.serverStatus.text = it.description
+                }
+        }
+
         viewModel.intentions.observe(this, {
             binding.firstFragmentContainer.isVisible = it == ViewIntention.GoToFirst
             binding.secondFragmentContainer.isVisible = it == ViewIntention.GoToSecond
