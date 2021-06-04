@@ -106,7 +106,7 @@ private class LoggyImpl : LoggyInterface {
     private lateinit var channel: ManagedChannel
 
     private lateinit var loggyService: LoggyServiceGrpcKt.LoggyServiceCoroutineStub
-    private val messageChannel = MutableSharedFlow<Message>()
+    private val messageChannel = MutableSharedFlow<Message>(0, 10)
 
     private var scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
     private var sessionID: Int = -1
@@ -328,10 +328,7 @@ private class LoggyImpl : LoggyInterface {
         }
     }
 
-    private fun startListeningForMessages() {
-        if (!hasSuccessfulConnection()) {
-            return
-        }
+    private suspend fun startListeningForMessages() {
         scope.launch {
             try {
                 loggyService.send(messageChannel
@@ -363,7 +360,9 @@ private class LoggyImpl : LoggyInterface {
             return
         }
 
-        messageChannel.tryEmit(message)
+        scope.launch {
+            messageChannel.emit(message)
+        }
         Log.e(
             LOGGY_TAG,
             "Server Connected. Try to send saved messages. Messages Left ${
