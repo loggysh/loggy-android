@@ -306,6 +306,10 @@ private class LoggyImpl : LoggyInterface {
             retryAttempt++
             // 1 * 2 // 2 * 2 // 3 * 2
             delay(retryAttempt * 2000L)
+            if (hasSuccessfulConnection() || status.value == LoggyStatus.Connecting) {
+                //someone is retrying a connection
+                return@async
+            }
             channel.getState(true)
             delay(500)
             if (hasSuccessfulConnection()) {
@@ -331,6 +335,7 @@ private class LoggyImpl : LoggyInterface {
     private suspend fun startListeningForMessages() {
         scope.launch {
             try {
+                Log.d(LOGGY_TAG, "Subscribed to listen to messages")
                 loggyService.send(messageChannel
                     .map { item ->
                         //set server session ID
