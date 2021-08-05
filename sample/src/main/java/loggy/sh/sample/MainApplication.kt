@@ -24,7 +24,6 @@ class MainApplication : Application() {
     fun setup() {
         Loggy.setup(
             this@MainApplication,
-            hostUrl = "http://alpha.loggy.sh",
             clientID = "d4d7f2b0-7833-4d91-bfa2-4cdfaacb68df"
         )
 

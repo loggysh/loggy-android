@@ -8,15 +8,13 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.dataStore
 import com.google.protobuf.InvalidProtocolBufferException
 import com.google.protobuf.Timestamp
-import io.grpc.ConnectivityState
-import io.grpc.ManagedChannel
-import io.grpc.ManagedChannelBuilder
-import io.grpc.Status
+import io.grpc.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import loggy.sh.utils.HeaderClientInterceptor
 import loggy.sh.utils.SessionPairSerializer
 import loggy.sh.utils.SettingsSerializer
 import sh.loggy.LoggyServiceGrpcKt
@@ -62,6 +60,10 @@ val Context.settingsDataStore: DataStore<LoggySettings.Settings> by dataStore(
 object Loggy : LoggyInterface {
 
     private val loggyImpl: LoggyImpl by lazy { LoggyImpl() }
+
+    fun setup(application: Application, clientID: String) {
+        loggyImpl.setup(application, "http://loggy.sh", clientID)
+    }
 
     override fun setup(application: Application, hostUrl: String, clientID: String) {
         loggyImpl.setup(application, hostUrl, clientID)
@@ -154,6 +156,7 @@ private class LoggyImpl : LoggyInterface {
                             usePlaintext()
                         }
                     }
+                    .intercept(HeaderClientInterceptor(clientID))
                     .build()
 
             logRepository = LogRepository(application)
