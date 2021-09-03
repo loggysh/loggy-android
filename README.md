@@ -18,8 +18,7 @@ Android Client for Loggy
     override fun onCreate() {
         Loggy.setup(
                 this@MainApplication,
-                "<user-id>",
-                "<device-name>" // Lady Ada Lovelace
+                "<api-key>",
             )
     }
 ```
