@@ -24,7 +24,8 @@ class MainApplication : Application() {
     fun setup() {
         Loggy.setup(
             this@MainApplication,
-            clientID = "d4d7f2b0-7833-4d91-bfa2-4cdfaacb68df"
+            apiKey = "932c3201886b455f877ff66076b4e24f",
+            hostUrl = "https://10.0.2.2"
         )
 
         Loggy.identity(

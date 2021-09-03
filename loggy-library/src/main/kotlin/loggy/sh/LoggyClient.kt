@@ -23,9 +23,10 @@ class LoggyClient(
     suspend fun createSession(loggyContext: LoggyContext): Int {
         Timber.d("Register For Application")
         val loggyAppWithId = loggyService.getOrInsertApplication(loggyContext.getApplication())
+        loggyContext.saveApplicationID(loggyAppWithId.id)
 
         Timber.d("Register For Device $loggyAppWithId")
-        val deviceWithId = loggyService.getOrInsertDevice(loggyContext.getDevice())
+        val deviceWithId = loggyService.getOrInsertDevice(loggyContext.getDevice(loggyAppWithId.id))
 
         Timber.d("Register For Session")
         val session = session(loggyAppWithId.id, deviceWithId.id) //TODO wont work offline

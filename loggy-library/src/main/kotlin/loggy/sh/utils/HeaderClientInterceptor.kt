@@ -2,10 +2,13 @@ package loggy.sh.utils
 
 import io.grpc.*
 
-class HeaderClientInterceptor(val userId: String) : ClientInterceptor {
+class HeaderClientInterceptor(val apiKey: String) : ClientInterceptor {
 
-    private val USER_ID_HEADER_KEY =
-        Metadata.Key.of("user_id", Metadata.ASCII_STRING_MARSHALLER)
+    private val CLIENT_HEADER_KEY =
+        Metadata.Key.of("client", Metadata.ASCII_STRING_MARSHALLER)
+
+    private val API_KEY_HEADER_KEY =
+        Metadata.Key.of("api_key", Metadata.ASCII_STRING_MARSHALLER)
 
     override fun <ReqT : Any?, RespT : Any?> interceptCall(
         method: MethodDescriptor<ReqT, RespT>?,
@@ -23,7 +26,11 @@ class HeaderClientInterceptor(val userId: String) : ClientInterceptor {
                 headers: Metadata
             ) {
                 /* put custom header */
-                headers.put(USER_ID_HEADER_KEY, userId)
+                headers.put(
+                    CLIENT_HEADER_KEY, "android"
+                )
+                headers.put(API_KEY_HEADER_KEY, apiKey)
+
                 super.start(object :
                     ForwardingClientCallListener.SimpleForwardingClientCallListener<RespT>(
                         responseListener
