@@ -1,12 +1,12 @@
 package loggy.sh.sample
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.OnLifecycleEvent
 import androidx.lifecycle.ProcessLifecycleOwner
 import loggy.sh.Loggy
+import loggy.sh.LoggyTree
 import timber.log.Timber
 
 class MainApplication : Application() {
@@ -32,10 +32,10 @@ class MainApplication : Application() {
             userName = "Ada Lovelace"
         )
 
-        Loggy.interceptException {
-            Log.d("LoggyIntercept", "Failed", it)
-            true
-        }
+//        Loggy.interceptException {
+//            Log.d("LoggyIntercept", "Failed", it)
+//            true
+//        }
     }
 
 }

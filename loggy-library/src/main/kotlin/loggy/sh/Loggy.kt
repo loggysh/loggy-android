@@ -11,12 +11,14 @@ import com.google.protobuf.Timestamp
 import io.grpc.ConnectivityState
 import io.grpc.ManagedChannel
 import io.grpc.Status
+import io.grpc.StatusException
 import io.grpc.android.AndroidChannelBuilder
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import loggy.sh.utils.ExceptionInterceptor
 import loggy.sh.utils.HeaderClientInterceptor
 import loggy.sh.utils.SessionPairSerializer
 import loggy.sh.utils.SettingsSerializer
@@ -307,12 +309,18 @@ private class LoggyImpl : LoggyInterface {
     private fun connectionSuccessful() {
         status.tryEmit(LoggyStatus.Connected)
         scope.launch {
-            val serverSessionID = loggyClient.createSession(loggyContext)
-            loggyClient.mapSessionId(sessionID, serverSessionID)
-            loggyClient.registerForLiveSession(serverSessionID)
-            startListeningForMessages()
-            isInitialized = true // create session was successful
-            sendPendingMessagesIfAny()
+            try {
+                val serverSessionID = loggyClient.createSession(loggyContext)
+                loggyClient.mapSessionId(sessionID, serverSessionID)
+                loggyClient.registerForLiveSession(serverSessionID)
+                startListeningForMessages()
+                isInitialized = true // create session was successful
+                sendPendingMessagesIfAny()
+            } catch (e: StatusException) {
+                Log.e(LOGGY_TAG, "Loggy failed with Status: ${e.status}")
+            } catch (e: Exception) {
+                Timber.e(e)
+            }
         }
     }
 

@@ -1,6 +1,5 @@
-package loggy.sh.sample
+package loggy.sh
 
-import loggy.sh.Loggy
 import timber.log.Timber
 
 class LoggyTree : Timber.Tree() {
