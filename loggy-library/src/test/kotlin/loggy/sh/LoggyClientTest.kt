@@ -59,13 +59,14 @@ class LoggyClientTest {
         val loggyContext = mock<LoggyContext>()
 
         val loggyApp =
-            Application.newBuilder().setId("bf0b5b86-62f0-4f87-9312-da3eeeceed0f/loggy.sh.sample")
+            Application.newBuilder().setPackagename("loggy.sh.sample")
+                .setId("bf0b5b86-62f0-4f87-9312-da3eeeceed0f")
                 .build()
         val device = Device.newBuilder().setId("1076aa98-c4c4-4c28-8a33-16271e38e651").build()
 
         whenever(loggyContext.getApplication())
             .thenReturn(loggyApp)
-        whenever(loggyContext.getDevice())
+        whenever(loggyContext.getDevice(loggyApp.id))
             .thenReturn(device)
 
         val hash = loggyContext.getDeviceHash(

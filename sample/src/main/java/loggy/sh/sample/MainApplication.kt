@@ -1,12 +1,12 @@
 package loggy.sh.sample
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.OnLifecycleEvent
 import androidx.lifecycle.ProcessLifecycleOwner
 import loggy.sh.Loggy
+import loggy.sh.LoggyTree
 import timber.log.Timber
 
 class MainApplication : Application() {
@@ -24,18 +24,18 @@ class MainApplication : Application() {
     fun setup() {
         Loggy.setup(
             this@MainApplication,
-            hostUrl = "http://alpha.loggy.sh",
-            clientID = "d4d7f2b0-7833-4d91-bfa2-4cdfaacb68df"
+            apiKey = "932c3201886b455f877ff66076b4e24f",
+            hostUrl = "https://10.0.2.2"
         )
 
         Loggy.identity(
             userName = "Ada Lovelace"
         )
 
-        Loggy.interceptException {
-            Log.d("LoggyIntercept", "Failed", it)
-            true
-        }
+//        Loggy.interceptException {
+//            Log.d("LoggyIntercept", "Failed", it)
+//            true
+//        }
     }
 
 }

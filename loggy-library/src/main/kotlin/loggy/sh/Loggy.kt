@@ -10,13 +10,16 @@ import com.google.protobuf.InvalidProtocolBufferException
 import com.google.protobuf.Timestamp
 import io.grpc.ConnectivityState
 import io.grpc.ManagedChannel
-import io.grpc.ManagedChannelBuilder
 import io.grpc.Status
+import io.grpc.StatusException
+import io.grpc.android.AndroidChannelBuilder
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import loggy.sh.utils.ExceptionInterceptor
+import loggy.sh.utils.HeaderClientInterceptor
 import loggy.sh.utils.SessionPairSerializer
 import loggy.sh.utils.SettingsSerializer
 import sh.loggy.LoggyServiceGrpcKt
@@ -27,6 +30,7 @@ import java.net.URL
 import java.time.Instant
 import java.time.ZoneId
 import java.util.concurrent.LinkedBlockingQueue
+import kotlin.concurrent.fixedRateTimer
 
 const val LOGGY_TAG = "Loggy"
 
@@ -63,8 +67,12 @@ object Loggy : LoggyInterface {
 
     private val loggyImpl: LoggyImpl by lazy { LoggyImpl() }
 
-    override fun setup(application: Application, hostUrl: String, clientID: String) {
-        loggyImpl.setup(application, hostUrl, clientID)
+    fun setup(application: Application, apiKey: String) {
+        loggyImpl.setup(application, "https://10.0.2.2", apiKey)
+    }
+
+    override fun setup(application: Application, hostUrl: String, apiKey: String) {
+        loggyImpl.setup(application, hostUrl, apiKey)
     }
 
     override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
@@ -96,9 +104,6 @@ object Loggy : LoggyInterface {
 }
 
 private class LoggyImpl : LoggyInterface {
-//    private val homeUrl = "loggy.sh"
-//    private val url = URL(BuildConfig.loggyUrl)
-//    private val port = if (url.port == -1) url.defaultPort else url.port
 
     private var retryAttempt = 1
     private var isInitialized = false
@@ -107,6 +112,7 @@ private class LoggyImpl : LoggyInterface {
 
     private lateinit var loggyService: LoggyServiceGrpcKt.LoggyServiceCoroutineStub
     private val messageChannel = MutableSharedFlow<Message>(0, 10)
+    private var messagingScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 
     private var scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
     private var sessionID: Int = -1
@@ -119,7 +125,7 @@ private class LoggyImpl : LoggyInterface {
     private lateinit var loggyContext: LoggyContextForAndroid
     private var status = MutableStateFlow(LoggyStatus.Initial)
 
-    override fun setup(application: Application, hostUrl: String, clientID: String) {
+    override fun setup(application: Application, hostUrl: String, apiKey: String) {
         //close any existing connection
         close()
 
@@ -133,7 +139,6 @@ private class LoggyImpl : LoggyInterface {
             })
             return
         }
-        val port = 50111
 
         installExceptionHandler()
 
@@ -143,31 +148,29 @@ private class LoggyImpl : LoggyInterface {
          * >30s server is down
          */
         try {
-            Log.i(LOGGY_TAG, "Connecting to ${url.host}:${port}")
             status.tryEmit(LoggyStatus.Connecting)
-            this.channel =
-                ManagedChannelBuilder.forAddress(url.host, port)
-                    .apply {
-                        if (url.protocol == "https") {
-                            useTransportSecurity()
-                        } else {
-                            usePlaintext()
-                        }
-                    }
-                    .build()
+            val port = 50111
+            Log.i(LOGGY_TAG, "Connecting to ${url.host}:${port}")
+            this.channel = AndroidChannelBuilder.forAddress(url.host, port)
+                .context(application)
+                .usePlaintext()
+                .intercept(HeaderClientInterceptor(apiKey = apiKey))
+                .build()
+
+            checkLoggyStateChangePeriodically()
 
             logRepository = LogRepository(application)
             loggyService = LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel)
             loggyClient = LoggyClient(application.sessionsDataStore, loggyService)
 
-            loggyContext = LoggyContextForAndroid(application, clientID)
+            loggyContext = LoggyContextForAndroid(application, apiKey)
 
             scope.launch {
                 channel.getState(true)
                 delay(500) // delay for connection to be established.
                 val isSuccess = hasSuccessfulConnection()
 
-                Log.i(LOGGY_TAG, "Setup data, context and client")
+                Log.i(LOGGY_TAG, "Setup data, context and client $isSuccess")
                 //increment only first time.
                 sessionID = loggyClient.newInternalSessionID()
                 updateSessionIDForNoSession(sessionID)
@@ -275,15 +278,49 @@ private class LoggyImpl : LoggyInterface {
         }
     }
 
+    private fun checkLoggyStateChangePeriodically() {
+        scope.async {
+            fixedRateTimer("status_timer", initialDelay = 0, period = 2000, action = {
+                val currentStatus = status.value
+                val channelState = channel.getState(false)
+                if (channelState == ConnectivityState.READY
+                    && currentStatus != LoggyStatus.Connected
+                ) {
+                    status.tryEmit(LoggyStatus.Connected)
+                } else if (channelState == ConnectivityState.CONNECTING
+                    && currentStatus != LoggyStatus.Connecting
+                ) {
+                    status.tryEmit(LoggyStatus.Connecting)
+                } else if (channelState == ConnectivityState.SHUTDOWN
+                    && currentStatus != LoggyStatus.Failed
+                ) {
+                    status.tryEmit(LoggyStatus.Failed)
+                } else if (channelState == ConnectivityState.TRANSIENT_FAILURE
+                    && currentStatus != LoggyStatus.Failed
+                ) {
+                    status.tryEmit(LoggyStatus.Failed)
+                } else if (channelState == ConnectivityState.IDLE && currentStatus != LoggyStatus.Initial) {
+                    status.tryEmit(LoggyStatus.Initial)
+                }
+            })
+        }
+    }
+
     private fun connectionSuccessful() {
         status.tryEmit(LoggyStatus.Connected)
         scope.launch {
-            val serverSessionID = loggyClient.createSession(loggyContext)
-            loggyClient.mapSessionId(sessionID, serverSessionID)
-            loggyClient.registerForLiveSession(serverSessionID)
-            startListeningForMessages()
-            isInitialized = true // create session was successful
-            sendPendingMessagesIfAny()
+            try {
+                val serverSessionID = loggyClient.createSession(loggyContext)
+                loggyClient.mapSessionId(sessionID, serverSessionID)
+                loggyClient.registerForLiveSession(serverSessionID)
+                startListeningForMessages()
+                isInitialized = true // create session was successful
+                sendPendingMessagesIfAny()
+            } catch (e: StatusException) {
+                Log.e(LOGGY_TAG, "Loggy failed with Status: ${e.status}")
+            } catch (e: Exception) {
+                Timber.e(e)
+            }
         }
     }
 
@@ -333,7 +370,7 @@ private class LoggyImpl : LoggyInterface {
     }
 
     private suspend fun startListeningForMessages() {
-        scope.launch {
+        messagingScope.launch {
             try {
                 Log.d(LOGGY_TAG, "Subscribed to listen to messages")
                 loggyService.send(messageChannel
@@ -359,22 +396,23 @@ private class LoggyImpl : LoggyInterface {
             return
         }
 
-        if (channel.getState(true) != ConnectivityState.READY) {
+        if (!hasSuccessfulConnection()) {
             Log.e(LOGGY_TAG, "Connection Failed to Loggy Server")
             logRepository.addMessage(message)
             return
         }
 
-        scope.launch {
+        messagingScope.launch {
             messageChannel.emit(message)
         }
         Log.e(
             LOGGY_TAG,
             "Server Connected. Try to send saved messages. Messages Left ${
-                logRepository
-                    .messageCount()
+                logRepository.messageCount()
             }"
         )
+
+        //Check if any pending messages exist and attempt to send.
         sendPendingMessagesIfAny()
     }
 
@@ -417,10 +455,9 @@ private class LoggyImpl : LoggyInterface {
     }
 
     private fun hasSuccessfulConnection(): Boolean {
-        val state = channel.getState(true)
-        if (state == ConnectivityState.IDLE ||
-            state == ConnectivityState.READY
-        ) {
+        val state = channel.getState(false)
+        Log.d(LOGGY_TAG, "$state")
+        if (state == ConnectivityState.READY) {
             return true
         }
         return false

@@ -15,7 +15,7 @@ import loggy.sh.sample.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default)
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main)
     private val viewModel: MainViewModel by viewModels()
     lateinit var binding: ActivityMainBinding
 
@@ -43,11 +43,11 @@ class MainActivity : AppCompatActivity() {
                 }
         }
 
-        viewModel.intentions.observe(this, {
+        viewModel.intentions.observe(this) {
             binding.firstFragmentContainer.isVisible = it == ViewIntention.GoToFirst
             binding.secondFragmentContainer.isVisible = it == ViewIntention.GoToSecond
             binding.thirdFragmentContainer.isVisible = it == ViewIntention.GoToThird
-        })
+        }
     }
 
 }

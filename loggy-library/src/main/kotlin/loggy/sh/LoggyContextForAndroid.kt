@@ -28,17 +28,8 @@ import sh.loggy.Application as LoggyApp
 
 class LoggyContextForAndroid(
     private val application: Application,
-    private val clientID: String
+    private val apiKey: String
 ) : LoggyContext {
-
-    private val scope = CoroutineScope(Dispatchers.Default)
-    private val applicationID: String by lazy { "$clientID/${application.packageName}" }
-
-    init {
-        scope.launch {
-            saveApplicationID(applicationID)
-        }
-    }
 
     override suspend fun getApplication(): LoggyApp {
         val appName = if (application.applicationInfo.labelRes == 0) {
@@ -47,10 +38,10 @@ class LoggyContextForAndroid(
             application.getString(application.applicationInfo.labelRes)
         }
 
-        Timber.d("Loggy - Client $applicationID")
+        Timber.d("Loggy")
         return LoggyApp.newBuilder()
             .setIcon("")
-            .setId(applicationID)
+            .setPackagename(application.packageName)
             .setName(appName)
             .build()
     }
@@ -62,12 +53,13 @@ class LoggyContextForAndroid(
     }
 
     override suspend fun getApplicationID(): String {
-        return application.settingsDataStore.data.firstOrNull()?.appId ?: applicationID
+        return application.settingsDataStore.data.firstOrNull()?.appId ?: ""
     }
 
-    override suspend fun getDevice(): Device {
+    override suspend fun getDevice(appID: String): Device {
         return Device.newBuilder()
             .setId(getDeviceID())
+            .setAppid(appID)
             .setDetails(deviceInformation(application))
             .build()
     }
