@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.os.Build
-import android.util.Log
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -24,9 +23,18 @@ import java.util.*
 import sh.loggy.internal.Application as LoggyApp
 
 class LoggyContextForAndroid(
-    private val application: Application,
-    private val apiKey: String
+    private val application: Application
 ) : LoggyContext {
+
+    override suspend fun saveApiKey(apiKey: String) {
+        application.settingsDataStore.updateData { settings ->
+            settings.toBuilder().setApiKey(apiKey).build()
+        }
+    }
+
+    override suspend fun getApiKey(): String {
+        return application.settingsDataStore.data.firstOrNull()?.apiKey ?: ""
+    }
 
     override suspend fun getApplication(): LoggyApp {
         val appName = if (application.applicationInfo.labelRes == 0) {
@@ -61,8 +69,8 @@ class LoggyContextForAndroid(
             .build()
     }
 
-    override suspend fun saveDeviceID(deviceID: String) {
-        Log.d(LOGGY_TAG, "Save Device ID")
+    override suspend fun generateAndSaveDeviceID() {
+        val deviceID = UUID.randomUUID().toString()
         application.settingsDataStore.updateData { settings ->
             settings.toBuilder().setDeviceId(deviceID).build()
         }
@@ -89,12 +97,7 @@ class LoggyContextForAndroid(
     }
 
     override suspend fun getDeviceID(): String {
-        var deviceId = application.settingsDataStore.data.firstOrNull()?.deviceId
-        if (deviceId.isNullOrEmpty()) {
-            deviceId = UUID.randomUUID().toString()
-            saveDeviceID(deviceId)
-        }
-        return deviceId
+        return application.settingsDataStore.data.firstOrNull()?.deviceId ?: ""
     }
 
     private fun deviceInformation(context: Context): String {

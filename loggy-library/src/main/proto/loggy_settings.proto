@@ -12,6 +12,7 @@ message Settings {
     string email = 3;
     string app_id = 4;
     string device_id = 5;
+    string api_key = 6;
 }
 
 message SessionPair {

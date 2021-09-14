@@ -20,13 +20,30 @@ class LoggyClient(
             .setDeviceid(deviceID)
             .build()
 
+    suspend fun validateAndCreateDevice(loggyContext: LoggyContext, apiKey: String) {
+        val savedApiKey = loggyContext.getApiKey()
+        val hasApiKeyChanged = apiKey != savedApiKey
+
+        if (hasApiKeyChanged) {
+            loggyContext.generateAndSaveDeviceID()
+        } else if (loggyContext.getDeviceID().isNullOrEmpty()) {
+            loggyContext.generateAndSaveDeviceID()
+        }
+
+        loggyContext.saveApiKey(apiKey)
+    }
+
     suspend fun createSession(loggyContext: LoggyContext): Int {
         Timber.d("Register For Application")
+
         val loggyAppWithId = loggyService.getOrInsertApplication(loggyContext.getApplication())
         loggyContext.saveApplicationID(loggyAppWithId.id)
 
         Timber.d("Register For Device with app id = ${loggyAppWithId.id}")
-        val deviceWithId = loggyService.getOrInsertDevice(loggyContext.getDevice(loggyAppWithId.id))
+        val deviceWithId = loggyService
+            .getOrInsertDevice(
+                loggyContext.getDevice(loggyAppWithId.id)
+            )
 
         Timber.d("Register For Session with device id = ${deviceWithId.id}")
         val session = session(loggyAppWithId.id, deviceWithId.id) //TODO wont work offline

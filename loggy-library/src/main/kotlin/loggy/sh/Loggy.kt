@@ -21,13 +21,13 @@ import kotlinx.coroutines.flow.map
 import loggy.sh.utils.HeaderClientInterceptor
 import loggy.sh.utils.SessionPairSerializer
 import loggy.sh.utils.SettingsSerializer
+import org.threeten.bp.Instant
+import org.threeten.bp.ZoneId
 import sh.loggy.internal.LoggyServiceGrpcKt
 import sh.loggy.internal.LoggySettings
 import sh.loggy.internal.Message
 import timber.log.Timber
 import java.net.URL
-import org.threeten.bp.Instant
-import org.threeten.bp.ZoneId
 import java.util.concurrent.LinkedBlockingQueue
 import kotlin.concurrent.fixedRateTimer
 
@@ -134,7 +134,10 @@ private class LoggyImpl : LoggyInterface {
             if (URLUtil.isNetworkUrl(hostUrl) || hostUrl.isNotEmpty()) {
                 url = URL(hostUrl)
             } else {
-                Log.e(LOGGY_TAG, "Setup failed. Invalid Url $hostUrl. Check if it has protocol http")
+                Log.e(
+                    LOGGY_TAG,
+                    "Setup failed. Invalid Url $hostUrl. Check if it has protocol http"
+                )
                 status.tryEmit(LoggyStatus.InvalidHost.apply {
                     description = "$description $hostUrl"
                 })
@@ -164,9 +167,11 @@ private class LoggyImpl : LoggyInterface {
                 loggyService = LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel)
                 loggyClient = LoggyClient(application.sessionsDataStore, loggyService)
 
-                loggyContext = LoggyContextForAndroid(application, apiKey)
+                loggyContext = LoggyContextForAndroid(application)
 
                 scope.launch {
+                    loggyClient.validateAndCreateDevice(loggyContext, apiKey)
+
                     channel.getState(true)
                     delay(500) // delay for connection to be established.
                     val isSuccess = hasSuccessfulConnection()
