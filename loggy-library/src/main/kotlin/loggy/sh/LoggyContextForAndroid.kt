@@ -5,10 +5,7 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.os.Build
 import android.util.Log
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -21,10 +18,10 @@ import loggy.sh.DeviceProperties.deviceModel
 import loggy.sh.DeviceProperties.deviceName
 import loggy.sh.DeviceProperties.deviceType
 import loggy.sh.utils.Hashids
-import sh.loggy.Device
+import sh.loggy.internal.Device
 import timber.log.Timber
 import java.util.*
-import sh.loggy.Application as LoggyApp
+import sh.loggy.internal.Application as LoggyApp
 
 class LoggyContextForAndroid(
     private val application: Application,

@@ -3,10 +3,10 @@ package loggy.sh
 import android.util.Log
 import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.firstOrNull
-import sh.loggy.LoggyServiceGrpcKt
-import sh.loggy.LoggySettings
-import sh.loggy.Session
-import sh.loggy.SessionId
+import sh.loggy.internal.LoggyServiceGrpcKt
+import sh.loggy.internal.LoggySettings
+import sh.loggy.internal.Session
+import sh.loggy.internal.SessionId
 import timber.log.Timber
 
 class LoggyClient(
@@ -25,10 +25,10 @@ class LoggyClient(
         val loggyAppWithId = loggyService.getOrInsertApplication(loggyContext.getApplication())
         loggyContext.saveApplicationID(loggyAppWithId.id)
 
-        Timber.d("Register For Device $loggyAppWithId")
+        Timber.d("Register For Device with app id = ${loggyAppWithId.id}")
         val deviceWithId = loggyService.getOrInsertDevice(loggyContext.getDevice(loggyAppWithId.id))
 
-        Timber.d("Register For Session")
+        Timber.d("Register For Session with device id = ${deviceWithId.id}")
         val session = session(loggyAppWithId.id, deviceWithId.id) //TODO wont work offline
         val sessionWithId = loggyService.insertSession(session)
 

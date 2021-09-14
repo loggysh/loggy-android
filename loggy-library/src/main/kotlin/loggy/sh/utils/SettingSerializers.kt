@@ -4,9 +4,9 @@ import android.util.Log
 import androidx.datastore.core.Serializer
 import androidx.datastore.preferences.protobuf.InvalidProtocolBufferException
 import loggy.sh.LOGGY_TAG
-import sh.loggy.LoggySettings.SessionPair
-import sh.loggy.LoggySettings.SessionIdentifier
-import sh.loggy.LoggySettings.Settings
+import sh.loggy.internal.LoggySettings.SessionPair
+import sh.loggy.internal.LoggySettings.SessionIdentifier
+import sh.loggy.internal.LoggySettings.Settings
 import java.io.InputStream
 import java.io.OutputStream
 

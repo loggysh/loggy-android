@@ -6,7 +6,7 @@ import com.squareup.tape2.ObjectQueue
 import com.squareup.tape2.QueueFile
 import okio.buffer
 import okio.sink
-import sh.loggy.Message
+import sh.loggy.internal.Message
 import java.io.File
 import java.io.IOException
 import java.io.OutputStream

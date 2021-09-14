@@ -1,7 +1,7 @@
 package loggy.sh
 
-import sh.loggy.Application
-import sh.loggy.Device
+import sh.loggy.internal.Application
+import sh.loggy.internal.Device
 
 interface LoggyContext {
     suspend fun getApplication(): Application

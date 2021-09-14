@@ -18,17 +18,16 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
-import loggy.sh.utils.ExceptionInterceptor
 import loggy.sh.utils.HeaderClientInterceptor
 import loggy.sh.utils.SessionPairSerializer
 import loggy.sh.utils.SettingsSerializer
-import sh.loggy.LoggyServiceGrpcKt
-import sh.loggy.LoggySettings
-import sh.loggy.Message
+import sh.loggy.internal.LoggyServiceGrpcKt
+import sh.loggy.internal.LoggySettings
+import sh.loggy.internal.Message
 import timber.log.Timber
 import java.net.URL
-import java.time.Instant
-import java.time.ZoneId
+import org.threeten.bp.Instant
+import org.threeten.bp.ZoneId
 import java.util.concurrent.LinkedBlockingQueue
 import kotlin.concurrent.fixedRateTimer
 
@@ -115,6 +114,7 @@ private class LoggyImpl : LoggyInterface {
     private var messagingScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 
     private var scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
+    private var mainScope: CoroutineScope = CoroutineScope(Dispatchers.Main)
     private var sessionID: Int = -1
     private var feature: String? = null
     private var onInterceptException: (e: Throwable) -> Boolean = { false }
@@ -126,66 +126,68 @@ private class LoggyImpl : LoggyInterface {
     private var status = MutableStateFlow(LoggyStatus.Initial)
 
     override fun setup(application: Application, hostUrl: String, apiKey: String) {
-        //close any existing connection
-        close()
+        mainScope.async {
+            //close any existing connection
+            close()
 
-        status.tryEmit(LoggyStatus.Setup)
-        if (URLUtil.isNetworkUrl(hostUrl) || hostUrl.isNotEmpty()) {
-            this.url = URL(hostUrl)
-        } else {
-            Log.e(LOGGY_TAG, "Setup failed. Invalid Url $hostUrl. Check if it has protocol http")
-            status.tryEmit(LoggyStatus.InvalidHost.apply {
-                description = "$description $hostUrl"
-            })
-            return
-        }
-
-        installExceptionHandler()
-
-        /**
-         * Attempt connecting to server in 2s, 4s, 8s
-         * Connection should be established within 15-30s
-         * >30s server is down
-         */
-        try {
-            status.tryEmit(LoggyStatus.Connecting)
-            val port = 50111
-            Log.i(LOGGY_TAG, "Connecting to ${url.host}:${port}")
-            this.channel = AndroidChannelBuilder.forAddress(url.host, port)
-                .context(application)
-                .usePlaintext()
-                .intercept(HeaderClientInterceptor(apiKey = apiKey))
-                .build()
-
-            checkLoggyStateChangePeriodically()
-
-            logRepository = LogRepository(application)
-            loggyService = LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel)
-            loggyClient = LoggyClient(application.sessionsDataStore, loggyService)
-
-            loggyContext = LoggyContextForAndroid(application, apiKey)
-
-            scope.launch {
-                channel.getState(true)
-                delay(500) // delay for connection to be established.
-                val isSuccess = hasSuccessfulConnection()
-
-                Log.i(LOGGY_TAG, "Setup data, context and client $isSuccess")
-                //increment only first time.
-                sessionID = loggyClient.newInternalSessionID()
-                updateSessionIDForNoSession(sessionID)
-
-                Log.i(LOGGY_TAG, "Loggy State - ${channel.getState(false)}")
-
-                if (isSuccess) {
-                    connectionSuccessful()
-                } else {
-                    connectionFailed(null)
-                }
+            status.tryEmit(LoggyStatus.Setup)
+            if (URLUtil.isNetworkUrl(hostUrl) || hostUrl.isNotEmpty()) {
+                url = URL(hostUrl)
+            } else {
+                Log.e(LOGGY_TAG, "Setup failed. Invalid Url $hostUrl. Check if it has protocol http")
+                status.tryEmit(LoggyStatus.InvalidHost.apply {
+                    description = "$description $hostUrl"
+                })
+                cancel("Invalid Host Url $hostUrl")
             }
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to setup loggy")
-            connectionFailed(e)
+
+            installExceptionHandler()
+
+            /**
+             * Attempt connecting to server in 2s, 4s, 8s
+             * Connection should be established within 15-30s
+             * >30s server is down
+             */
+            try {
+                status.tryEmit(LoggyStatus.Connecting)
+                val port = 50111
+                Log.i(LOGGY_TAG, "Connecting to ${url.host}:${port}")
+                channel = AndroidChannelBuilder.forAddress(url.host, port)
+                    .context(application)
+                    .usePlaintext()
+                    .intercept(HeaderClientInterceptor(apiKey = apiKey))
+                    .build()
+
+                checkLoggyStateChangePeriodically()
+
+                logRepository = LogRepository(application)
+                loggyService = LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel)
+                loggyClient = LoggyClient(application.sessionsDataStore, loggyService)
+
+                loggyContext = LoggyContextForAndroid(application, apiKey)
+
+                scope.launch {
+                    channel.getState(true)
+                    delay(500) // delay for connection to be established.
+                    val isSuccess = hasSuccessfulConnection()
+
+                    Log.i(LOGGY_TAG, "Setup data, context and client $isSuccess")
+                    //increment only first time.
+                    sessionID = loggyClient.newInternalSessionID()
+                    updateSessionIDForNoSession(sessionID)
+
+                    Log.i(LOGGY_TAG, "Loggy State - ${channel.getState(false)}")
+
+                    if (isSuccess) {
+                        connectionSuccessful()
+                    } else {
+                        connectionFailed(null)
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to setup loggy")
+                connectionFailed(e)
+            }
         }
     }
 
@@ -274,7 +276,9 @@ private class LoggyImpl : LoggyInterface {
 
     fun identity(userID: String?, email: String?, userName: String?) {
         scope.launch {
-            loggyContext.saveIdentity(userID, email, userName)
+            if (this@LoggyImpl::loggyContext.isInitialized) {
+                loggyContext.saveIdentity(userID, email, userName)
+            }
         }
     }
 
