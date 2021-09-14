@@ -17,7 +17,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import loggy.sh.utils.HeaderClientInterceptor
 import loggy.sh.utils.SessionPairSerializer
 import loggy.sh.utils.SettingsSerializer
@@ -26,12 +25,9 @@ import org.threeten.bp.ZoneId
 import sh.loggy.internal.LoggyServiceGrpcKt
 import sh.loggy.internal.LoggySettings
 import sh.loggy.internal.Message
-import timber.log.Timber
 import java.net.URL
 import java.util.concurrent.LinkedBlockingQueue
 import kotlin.concurrent.fixedRateTimer
-
-const val LOGGY_TAG = "Loggy"
 
 enum class LoggyStatus(var description: String) {
     Initial("initial"),
@@ -115,6 +111,7 @@ private class LoggyImpl : LoggyInterface {
 
     private var scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
     private var mainScope: CoroutineScope = CoroutineScope(Dispatchers.Main)
+    private var internalSessionID: Int = -1
     private var sessionID: Int = -1
     private var feature: String? = null
     private var onInterceptException: (e: Throwable) -> Boolean = { false }
@@ -134,8 +131,7 @@ private class LoggyImpl : LoggyInterface {
             if (URLUtil.isNetworkUrl(hostUrl) || hostUrl.isNotEmpty()) {
                 url = URL(hostUrl)
             } else {
-                Log.e(
-                    LOGGY_TAG,
+                SupportLogs.error(
                     "Setup failed. Invalid Url $hostUrl. Check if it has protocol http"
                 )
                 status.tryEmit(LoggyStatus.InvalidHost.apply {
@@ -154,7 +150,7 @@ private class LoggyImpl : LoggyInterface {
             try {
                 status.tryEmit(LoggyStatus.Connecting)
                 val port = 50111
-                Log.i(LOGGY_TAG, "Connecting to ${url.host}:${port}")
+                SupportLogs.info("Connecting to ${url.host}:${port}")
                 channel = AndroidChannelBuilder.forAddress(url.host, port)
                     .context(application)
                     .usePlaintext()
@@ -170,27 +166,30 @@ private class LoggyImpl : LoggyInterface {
                 loggyContext = LoggyContextForAndroid(application)
 
                 scope.launch {
+                    log(Log.INFO, LOGGY_TAG, "initializing...", null)
                     loggyClient.validateAndCreateDevice(loggyContext, apiKey)
 
-                    channel.getState(true)
-                    delay(500) // delay for connection to be established.
+                    val state = channel.getState(true)
+                    SupportLogs.log("Initial State $state")
+                    delay(1000) // delay for connection to be established.
                     val isSuccess = hasSuccessfulConnection()
 
-                    Log.i(LOGGY_TAG, "Setup data, context and client $isSuccess")
+                    SupportLogs.info("Setup data, context and client $isSuccess")
                     //increment only first time.
-                    sessionID = loggyClient.newInternalSessionID()
-                    updateSessionIDForNoSession(sessionID)
+                    internalSessionID = loggyClient.newInternalSessionID()
+                    updateSessionIDForNoSession(internalSessionID)
 
-                    Log.i(LOGGY_TAG, "Loggy State - ${channel.getState(false)}")
+                    SupportLogs.info("Loggy State - ${channel.getState(false)}")
 
                     if (isSuccess) {
+                        log(Log.INFO, LOGGY_TAG, "initialized", null)
                         connectionSuccessful()
                     } else {
                         connectionFailed(null)
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Failed to setup loggy")
+                SupportLogs.error("Failed to setup loggy", e)
                 connectionFailed(e)
             }
         }
@@ -198,7 +197,7 @@ private class LoggyImpl : LoggyInterface {
 
     override fun close() {
         if (this::loggyClient.isInitialized) {
-            Log.d(LOGGY_TAG, "Closing Loggy")
+            SupportLogs.log("Closing Loggy")
             status.tryEmit(LoggyStatus.Disconnecting)
             channel.shutdownNow()
             loggyClient.close()
@@ -263,12 +262,14 @@ private class LoggyImpl : LoggyInterface {
         val timestamp = Timestamp.newBuilder().setSeconds(time.epochSecond)
             .setNanos(time.nano).build()
 
+        val sid = if (sessionID == -1) internalSessionID else sessionID
+
         // auto-increment
         val loggyMessage = Message
             .newBuilder()
             .setLevel(level)
             .setMsg(msg)
-            .setSessionid(sessionID)
+            .setSessionid(sid)
             .setTimestamp(timestamp)
             .build()
 
@@ -316,19 +317,21 @@ private class LoggyImpl : LoggyInterface {
     }
 
     private fun connectionSuccessful() {
+
         status.tryEmit(LoggyStatus.Connected)
         scope.launch {
             try {
-                val serverSessionID = loggyClient.createSession(loggyContext)
-                loggyClient.mapSessionId(sessionID, serverSessionID)
-                loggyClient.registerForLiveSession(serverSessionID)
+                sessionID = loggyClient.createSession(loggyContext)
+                loggyClient.mapSessionId(internalSessionID, sessionID)
+                loggyClient.registerForLiveSession(sessionID)
                 startListeningForMessages()
                 isInitialized = true // create session was successful
+                delay(1000)
                 sendPendingMessagesIfAny()
             } catch (e: StatusException) {
-                Log.e(LOGGY_TAG, "Loggy failed with Status: ${e.status}")
+                SupportLogs.error("Loggy failed with Status: ${e.status}")
             } catch (e: Exception) {
-                Timber.e(e)
+                SupportLogs.error("Unknown error", e)
             }
         }
     }
@@ -381,18 +384,10 @@ private class LoggyImpl : LoggyInterface {
     private suspend fun startListeningForMessages() {
         messagingScope.launch {
             try {
-                Log.d(LOGGY_TAG, "Subscribed to listen to messages")
-                loggyService.send(messageChannel
-                    .map { item ->
-                        //set server session ID
-                        val sid = loggyClient.getServerSessionID(item.sessionid)
-                        Log.i(LOGGY_TAG, "$sid State: ${channel.getState(false)} ${item.msg}")
-                        item.toBuilder()
-                            .setSessionid(sid)
-                            .build()
-                    })
+                SupportLogs.log("Subscribed to listen to messages")
+                loggyService.send(messageChannel)
             } catch (e: Exception) {
-                Timber.e(e, "Failed to send message")
+                SupportLogs.error("Failed to send message", e)
                 connectionFailed(e)
             }
         }
@@ -405,17 +400,32 @@ private class LoggyImpl : LoggyInterface {
             return
         }
 
-        if (!hasSuccessfulConnection()) {
-            Log.e(LOGGY_TAG, "Connection Failed to Loggy Server")
+        SupportLogs.info("Session ID : $sessionID Internal : $internalSessionID")
+        if (sessionID == -1) {
+            messagingScope.launch {
+                sessionID = loggyClient.getServerSessionID(message.sessionid)
+            }
             logRepository.addMessage(message)
             return
         }
 
-        messagingScope.launch {
-            messageChannel.emit(message)
+        if (!hasSuccessfulConnection()) {
+            SupportLogs.error("Connection Failed to Loggy Server")
+            logRepository.addMessage(message)
+            return
         }
-        Log.e(
-            LOGGY_TAG,
+
+        SupportLogs.info("$sessionID State: ${channel.getState(false)} ${message.msg}")
+
+        var msg = message
+        if (message.sessionid != sessionID) {
+            msg = message.toBuilder()
+                .setSessionid(sessionID)
+                .buildPartial()
+        }
+
+        messageChannel.tryEmit(msg)
+        SupportLogs.error(
             "Server Connected. Try to send saved messages. Messages Left ${
                 logRepository.messageCount()
             }"
@@ -432,9 +442,11 @@ private class LoggyImpl : LoggyInterface {
             try {
                 parsedMessage = logRepository.getMessageTop()
             } catch (e: InvalidProtocolBufferException) {
-                Log.e(LOGGY_TAG, "Invalid message", e)
+                SupportLogs.error("Invalid message", e)
+                return
             } catch (e: Exception) {
-                Log.e(LOGGY_TAG, e.message, e)
+                SupportLogs.error(e.message, e)
+                return
             }
             // remove any message from top.
             // Its possible for a message to get corrupted.`
@@ -443,7 +455,7 @@ private class LoggyImpl : LoggyInterface {
                 attemptToSendMessage(parsedMessage)
             }
         } else {
-            Log.d(LOGGY_TAG, "Empty Messages")
+            SupportLogs.log("Empty Messages")
         }
     }
 
@@ -453,7 +465,7 @@ private class LoggyImpl : LoggyInterface {
 
     private fun updateSessionIDForNoSession(sessionID: Int) {
         if (sessionID == -1) {
-            Timber.e(IllegalArgumentException("Invalid Session ID."), "Invalid Session ID")
+            SupportLogs.error("Invalid Session ID", IllegalArgumentException("Invalid Session ID."))
             return
         }
         noSessionMessages.forEach {
@@ -465,8 +477,8 @@ private class LoggyImpl : LoggyInterface {
 
     private fun hasSuccessfulConnection(): Boolean {
         val state = channel.getState(false)
-        Log.d(LOGGY_TAG, "$state")
-        if (state == ConnectivityState.READY) {
+        SupportLogs.log("Check Connection : $state")
+        if (state == ConnectivityState.READY || state == ConnectivityState.IDLE) {
             return true
         }
         return false

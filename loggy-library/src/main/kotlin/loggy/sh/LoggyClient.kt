@@ -1,13 +1,11 @@
 package loggy.sh
 
-import android.util.Log
 import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.firstOrNull
 import sh.loggy.internal.LoggyServiceGrpcKt
 import sh.loggy.internal.LoggySettings
 import sh.loggy.internal.Session
 import sh.loggy.internal.SessionId
-import timber.log.Timber
 
 class LoggyClient(
     private val sessionsDataStore: DataStore<LoggySettings.SessionPair>,
@@ -34,18 +32,18 @@ class LoggyClient(
     }
 
     suspend fun createSession(loggyContext: LoggyContext): Int {
-        Timber.d("Register For Application")
+        SupportLogs.log("Register For Application")
 
         val loggyAppWithId = loggyService.getOrInsertApplication(loggyContext.getApplication())
         loggyContext.saveApplicationID(loggyAppWithId.id)
 
-        Timber.d("Register For Device with app id = ${loggyAppWithId.id}")
+        SupportLogs.log("Register For Device with app id = ${loggyAppWithId.id}")
         val deviceWithId = loggyService
             .getOrInsertDevice(
                 loggyContext.getDevice(loggyAppWithId.id)
             )
 
-        Timber.d("Register For Session with device id = ${deviceWithId.id}")
+        SupportLogs.log("Register For Session with device id = ${deviceWithId.id}")
         val session = session(loggyAppWithId.id, deviceWithId.id) //TODO wont work offline
         val sessionWithId = loggyService.insertSession(session)
 
@@ -53,7 +51,7 @@ class LoggyClient(
     }
 
     suspend fun registerForLiveSession(sessionId: Int) {
-        Timber.d("Register For Live Logs")
+        SupportLogs.log("Register For Live Logs")
         val sessionWithId = SessionId.newBuilder()
             .setId(sessionId)
             .build()
@@ -61,7 +59,12 @@ class LoggyClient(
     }
 
     suspend fun newInternalSessionID(): Int {
-        val newSessionID = (sessionsDataStore.data.firstOrNull()?.sessionCounter ?: 0) + 1
+        var newSessionID = sessionsDataStore.data.firstOrNull()?.sessionCounter
+
+        if (newSessionID == 0 || newSessionID == null) {
+            newSessionID = Int.MAX_VALUE
+        }
+        newSessionID -= 1
 
         //add to store
         sessionsDataStore.updateData { sessions ->
@@ -95,7 +98,7 @@ class LoggyClient(
     }
 
     fun close() {
-        Log.d(LOGGY_TAG, "Closing Client")
+        SupportLogs.log("Closing Client")
     }
 
 }

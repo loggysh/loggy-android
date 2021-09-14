@@ -18,7 +18,6 @@ import loggy.sh.DeviceProperties.deviceName
 import loggy.sh.DeviceProperties.deviceType
 import loggy.sh.utils.Hashids
 import sh.loggy.internal.Device
-import timber.log.Timber
 import java.util.*
 import sh.loggy.internal.Application as LoggyApp
 
@@ -43,7 +42,6 @@ class LoggyContextForAndroid(
             application.getString(application.applicationInfo.labelRes)
         }
 
-        Timber.d("Loggy")
         return LoggyApp.newBuilder()
             .setIcon("")
             .setPackagename(application.packageName)
@@ -121,7 +119,7 @@ class LoggyContextForAndroid(
             map[deviceType] = Build.DEVICE
             map[deviceModel] = "${Build.MODEL} ${Build.PRODUCT}"
         } catch (e: Exception) {
-            Timber.e(e, "Failed to get Device Information")
+            SupportLogs.error("Failed to get Device Information", e)
         }
 
         val jsonMap: Map<String, JsonElement> = map.mapValues { s -> JsonPrimitive(s.value) }

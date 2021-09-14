@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.datastore.core.Serializer
 import androidx.datastore.preferences.protobuf.InvalidProtocolBufferException
 import loggy.sh.LOGGY_TAG
+import loggy.sh.SupportLogs
 import sh.loggy.internal.LoggySettings.SessionPair
 import sh.loggy.internal.LoggySettings.SessionIdentifier
 import sh.loggy.internal.LoggySettings.Settings
@@ -18,7 +19,7 @@ object SessionPairSerializer : Serializer<SessionPair> {
         try {
             return SessionPair.parseFrom(input)
         } catch (exception: InvalidProtocolBufferException) {
-            Log.e(LOGGY_TAG, "Cannot read proto.", exception)
+            SupportLogs.error( "Cannot read proto.", exception)
         }
         return defaultValue
     }
@@ -35,7 +36,7 @@ object SessionIdentifierSerializer : Serializer<SessionIdentifier> {
         try {
             return SessionIdentifier.parseFrom(input)
         } catch (exception: InvalidProtocolBufferException) {
-            Log.e(LOGGY_TAG, "Cannot read proto.", exception)
+            SupportLogs.error( "Cannot read proto.", exception)
         }
         return defaultValue
     }
@@ -52,7 +53,7 @@ object SettingsSerializer : Serializer<Settings> {
         try {
             return Settings.parseFrom(input)
         } catch (exception: InvalidProtocolBufferException) {
-            Log.e(LOGGY_TAG, "Cannot read proto.", exception)
+            SupportLogs.error( "Cannot read proto.", exception)
         }
         return defaultValue
     }

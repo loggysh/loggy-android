@@ -19,14 +19,14 @@ private class MessageConverter : ObjectQueue.Converter<Message> {
     override fun toStream(value: Message, os: OutputStream) {
         try {
             val bytes = value.toByteArray()
-            Log.d(LOGGY_TAG, "SIZE ${bytes.size}")
+            SupportLogs.log( "SIZE ${bytes.size}")
             if (bytes.isNotEmpty()) {
                 os.sink().buffer().use { sink ->
                     sink.write(bytes)
                 }
             }
         } catch (e: IOException) {
-            Log.e(LOGGY_TAG, e.message, e)
+            SupportLogs.error( e.message, e)
         }
     }
 
@@ -49,10 +49,11 @@ class LogRepository(val application: Application) {
             ObjectQueue.create(queueFile, MessageConverter())
 
     fun addMessage(message: Message) {
+        SupportLogs.info("Attempt add $message")
         try {
             objectFile.add(message)
         } catch (e: Exception) {
-            Log.e(LOGGY_TAG, e.message, e)
+            SupportLogs.error( e.message, e)
         }
     }
 
@@ -63,7 +64,7 @@ class LogRepository(val application: Application) {
             }
             return objectFile.peek()
         } catch (e: Exception) {
-            Log.e(LOGGY_TAG, e.message, e)
+            SupportLogs.error( e.message, e)
         }
         return null
     }
@@ -72,7 +73,7 @@ class LogRepository(val application: Application) {
         try {
             objectFile.remove()
         } catch (e: Exception) {
-            Log.e(LOGGY_TAG, e.message, e)
+            SupportLogs.error( e.message, e)
         }
     }
 

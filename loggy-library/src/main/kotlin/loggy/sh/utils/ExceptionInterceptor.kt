@@ -1,7 +1,7 @@
 package loggy.sh.utils
 
 import io.grpc.*
-import timber.log.Timber
+import loggy.sh.SupportLogs
 
 /**
  * Log all exceptions thrown from gRPC endpoints, and adjust Status for known exceptions.
@@ -23,7 +23,7 @@ class ExceptionInterceptor : ServerInterceptor {
             val cause = status.cause
             var newStatus = status
 
-            Timber.e("Error handling gRPC endpoint.", cause)
+            SupportLogs.error("Error handling gRPC endpoint.", cause)
 
             if (status.code == Status.Code.UNKNOWN) {
                 val translatedStatus = when (cause) {
