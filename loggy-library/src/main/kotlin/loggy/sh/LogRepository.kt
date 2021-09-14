@@ -49,7 +49,6 @@ class LogRepository(val application: Application) {
             ObjectQueue.create(queueFile, MessageConverter())
 
     fun addMessage(message: Message) {
-        SupportLogs.info("Attempt add $message")
         try {
             objectFile.add(message)
         } catch (e: Exception) {

@@ -330,8 +330,10 @@ private class LoggyImpl : LoggyInterface {
                 sendPendingMessagesIfAny()
             } catch (e: StatusException) {
                 SupportLogs.error("Loggy failed with Status: ${e.status}")
+                retryConnection()
             } catch (e: Exception) {
                 SupportLogs.error("Unknown error", e)
+                retryConnection()
             }
         }
     }
@@ -355,15 +357,17 @@ private class LoggyImpl : LoggyInterface {
             retryAttempt++
             // 1 * 2 // 2 * 2 // 3 * 2
             delay(retryAttempt * 2000L)
-            if (hasSuccessfulConnection() || status.value == LoggyStatus.Connecting) {
+            SupportLogs.info("Retrying Attempt $retryAttempt ${status.value}")
+            if (hasSuccessfulConnection()) {
+                connectionSuccessful()
+                return@async
+            } else if (status.value == LoggyStatus.Connecting) {
                 //someone is retrying a connection
                 return@async
             }
             channel.getState(true)
-            delay(500)
-            if (hasSuccessfulConnection()) {
-                connectionSuccessful()
-            } else {
+            delay(1000)
+            if (!hasSuccessfulConnection()) {
                 //creates recursion but is delayed with retry attempt.
                 connectionFailed(null)
             }
