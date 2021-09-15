@@ -41,7 +41,7 @@ enum class LoggyStatus(var description: String) {
 
 private interface LoggyInterface {
     fun setup(application: Application, hostUrl: String, clientID: String)
-    fun log(priority: Int, tag: String?, message: String, t: Throwable?)
+    fun log(priority: Int, tag: String? = "", message: String, t: Throwable? = null)
     fun interceptException(onException: (exception: Throwable) -> Boolean)
     suspend fun loggyDeviceUrl(): String
     fun close()
