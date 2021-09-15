@@ -40,8 +40,8 @@ enum class LoggyStatus(var description: String) {
 }
 
 private interface LoggyInterface {
-    fun setup(application: Application, hostUrl: String, clientID: String)
-    fun log(priority: Int, tag: String? = "", message: String, t: Throwable? = null)
+    fun setup(application: Application, hostUrl: String, apiKey: String)
+    fun log(priority: Int, tag: String? = "", message: String, tr: Throwable? = null)
     fun interceptException(onException: (exception: Throwable) -> Boolean)
     suspend fun loggyDeviceUrl(): String
     fun close()
@@ -70,8 +70,8 @@ object Loggy : LoggyInterface {
         loggyImpl.setup(application, hostUrl, apiKey)
     }
 
-    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
-        loggyImpl.log(priority, tag, message, t)
+    override fun log(priority: Int, tag: String?, message: String, tr: Throwable?) {
+        loggyImpl.log(priority, tag, message, tr)
     }
 
     override suspend fun loggyDeviceUrl(): String {
@@ -247,7 +247,7 @@ private class LoggyImpl : LoggyInterface {
      * App Session - 3 - Server Session ID - undefined - insertSession - 103
      */
 
-    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+    override fun log(priority: Int, tag: String?, message: String, tr: Throwable?) {
         val level = when (priority) {
             Log.VERBOSE, Log.ASSERT, Log.DEBUG -> Message.Level.DEBUG
             Log.ERROR -> Message.Level.ERROR
@@ -256,7 +256,7 @@ private class LoggyImpl : LoggyInterface {
             100 -> Message.Level.CRASH
             else -> Message.Level.DEBUG
         }
-        val exception = if (t != null) "\n ${t.message} ${t.cause} ${t.stackTrace}" else ""
+        val exception = if (tr != null) "\n ${tr.message} ${tr.cause} ${tr.stackTrace}" else ""
         val msg = "${feature ?: ""} ${tag ?: ""} \n $message $exception"
         val time: Instant = Instant.now().atZone(ZoneId.of("UTC")).toInstant()
         val timestamp = Timestamp.newBuilder().setSeconds(time.epochSecond)
