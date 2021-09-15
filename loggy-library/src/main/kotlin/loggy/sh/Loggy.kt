@@ -442,7 +442,7 @@ private class LoggyImpl : LoggyInterface {
     private fun sendPendingMessagesIfAny() {
         if (logRepository.hasMessages()) {
             // This means some messages are backed up and this attempts to resend recursively
-            var parsedMessage: Message? = null
+            val parsedMessage: Message?
             try {
                 parsedMessage = logRepository.getMessageTop()
             } catch (e: InvalidProtocolBufferException) {
