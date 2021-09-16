@@ -1,6 +1,7 @@
 package loggy.sh.sample.ui
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -12,6 +13,8 @@ import kotlinx.coroutines.launch
 import loggy.sh.Loggy
 import loggy.sh.sample.MainApplication
 import loggy.sh.sample.databinding.ActivityMainBinding
+import timber.log.Timber
+import timber.log.Timber.Forest.log
 
 class MainActivity : AppCompatActivity() {
 
@@ -42,6 +45,11 @@ class MainActivity : AppCompatActivity() {
                     binding.serverStatus.text = it.description
                 }
         }
+
+        Loggy.log(Log.INFO, message = "Hello")
+        Loggy.log(Log.DEBUG, message = "Hmm")
+        Loggy.log(Log.ERROR, message = "woah", t = null)
+        Loggy.log(Log.WARN, message = "okay!")
 
         viewModel.intentions.observe(this) {
             binding.firstFragmentContainer.isVisible = it == ViewIntention.GoToFirst

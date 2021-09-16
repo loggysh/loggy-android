@@ -1,7 +1,6 @@
 package loggy.sh.sample
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.OnLifecycleEvent
@@ -25,8 +24,7 @@ class MainApplication : Application() {
     fun setup() {
         Loggy.setup(
             this@MainApplication,
-            apiKey = "932c3201886b455f877ff66076b4e24f",
-            hostUrl = "https://10.0.2.2"
+            apiKey = "4c5b3ba85d26402c895adaeb99c4c024"
         )
 
         Loggy.identity(

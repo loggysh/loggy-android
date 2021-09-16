@@ -40,8 +40,7 @@ enum class LoggyStatus(var description: String) {
 }
 
 private interface LoggyInterface {
-    fun setup(application: Application, hostUrl: String, apiKey: String)
-    fun log(priority: Int, tag: String? = "", message: String, tr: Throwable? = null)
+    fun setup(application: Application, apiKey: String, hostUrl: String)
     fun interceptException(onException: (exception: Throwable) -> Boolean)
     suspend fun loggyDeviceUrl(): String
     fun close()
@@ -66,12 +65,12 @@ object Loggy : LoggyInterface {
         loggyImpl.setup(application, "https://loggy.sh", apiKey)
     }
 
-    override fun setup(application: Application, hostUrl: String, apiKey: String) {
-        loggyImpl.setup(application, hostUrl, apiKey)
+    override fun setup(application: Application, apiKey: String, hostUrl: String) {
+        loggyImpl.setup(application, apiKey, hostUrl)
     }
 
-    override fun log(priority: Int, tag: String?, message: String, tr: Throwable?) {
-        loggyImpl.log(priority, tag, message, tr)
+    fun log(priority: Int, tag: String? = "", message: String, t: Throwable? = null) {
+        loggyImpl.log(priority, tag, message, t)
     }
 
     override suspend fun loggyDeviceUrl(): String {
@@ -96,6 +95,7 @@ object Loggy : LoggyInterface {
     override fun status(): StateFlow<LoggyStatus> {
         return loggyImpl.status()
     }
+
 }
 
 private class LoggyImpl : LoggyInterface {
@@ -247,7 +247,7 @@ private class LoggyImpl : LoggyInterface {
      * App Session - 3 - Server Session ID - undefined - insertSession - 103
      */
 
-    override fun log(priority: Int, tag: String?, message: String, tr: Throwable?) {
+    fun log(priority: Int, tag: String? = "", message: String, tr: Throwable? = null) {
         val level = when (priority) {
             Log.VERBOSE, Log.ASSERT, Log.DEBUG -> Message.Level.DEBUG
             Log.ERROR -> Message.Level.ERROR
@@ -256,7 +256,8 @@ private class LoggyImpl : LoggyInterface {
             100 -> Message.Level.CRASH
             else -> Message.Level.DEBUG
         }
-        val exception = if (tr != null) "\n ${tr.message} ${tr.cause} ${tr.stackTrace}" else ""
+        val exception = if (tr != null) "\n ${tr.message ?: ""} ${tr.cause ?: ""} ${tr.stackTrace}"
+        else ""
         val msg = "${feature ?: ""} ${tag ?: ""} \n $message $exception"
         val time: Instant = Instant.now().atZone(ZoneId.of("UTC")).toInstant()
         val timestamp = Timestamp.newBuilder().setSeconds(time.epochSecond)
