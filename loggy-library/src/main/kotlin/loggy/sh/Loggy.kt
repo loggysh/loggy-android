@@ -62,11 +62,11 @@ object Loggy : LoggyInterface {
     private val loggyImpl: LoggyImpl by lazy { LoggyImpl() }
 
     fun setup(application: Application, apiKey: String) {
-        loggyImpl.setup(application, "https://loggy.sh", apiKey)
+        loggyImpl.setup(application, apiKey = apiKey, hostUrl = "https://loggy.sh")
     }
 
     override fun setup(application: Application, apiKey: String, hostUrl: String) {
-        loggyImpl.setup(application, apiKey, hostUrl)
+        loggyImpl.setup(application, apiKey = apiKey, hostUrl = hostUrl)
     }
 
     fun log(priority: Int, tag: String? = "", message: String, t: Throwable? = null) {
