@@ -122,7 +122,7 @@ private class LoggyImpl : LoggyInterface {
     private lateinit var loggyContext: LoggyContextForAndroid
     private var status = MutableStateFlow(LoggyStatus.Initial)
 
-    override fun setup(application: Application, hostUrl: String, apiKey: String) {
+    override fun setup(application: Application, apiKey: String, hostUrl: String) {
         mainScope.async {
             //close any existing connection
             close()
