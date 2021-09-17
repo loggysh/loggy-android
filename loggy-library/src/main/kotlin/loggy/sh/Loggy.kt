@@ -39,14 +39,6 @@ enum class LoggyStatus(var description: String) {
     InvalidHost("Invalid Host"),
 }
 
-private interface LoggyInterface {
-    fun setup(application: Application, apiKey: String, hostUrl: String)
-    fun interceptException(onException: (exception: Throwable) -> Boolean)
-    suspend fun loggyDeviceUrl(): String
-    fun close()
-    fun status(): StateFlow<LoggyStatus>
-}
-
 val Context.sessionsDataStore: DataStore<LoggySettings.SessionPair> by dataStore(
     fileName = "sessions.pb",
     serializer = SessionPairSerializer
@@ -57,48 +49,75 @@ val Context.settingsDataStore: DataStore<LoggySettings.Settings> by dataStore(
     serializer = SettingsSerializer
 )
 
-object Loggy : LoggyInterface {
+object Loggy {
 
     private val loggyImpl: LoggyImpl by lazy { LoggyImpl() }
 
+    /**
+     * Setup loggy using apikey (String)
+     */
+    @JvmStatic
     fun setup(application: Application, apiKey: String) {
         loggyImpl.setup(application, apiKey = apiKey, hostUrl = "https://loggy.sh")
     }
 
-    override fun setup(application: Application, apiKey: String, hostUrl: String) {
+    /**
+     * Setup loggy using apikey (String) and hostUrl (String)
+     * Hosturl is used for self-hosted application
+     */
+    @JvmStatic
+    fun setup(application: Application, apiKey: String, hostUrl: String) {
         loggyImpl.setup(application, apiKey = apiKey, hostUrl = hostUrl)
     }
 
-    fun log(priority: Int, tag: String? = "", message: String, t: Throwable? = null) {
-        loggyImpl.log(priority, tag, message, t)
-    }
-
-    override suspend fun loggyDeviceUrl(): String {
+    /**
+     * Get device short url to share
+     */
+    @JvmStatic
+    suspend fun loggyDeviceUrl(): String {
         return loggyImpl.loggyDeviceUrl()
     }
 
     /**
-     * Cannot overide from interface. Since Interface defaults overriding is not allowed.
+     * Set Custom user identification
      */
+    @JvmStatic
+    @JvmOverloads
     fun identity(userID: String? = "", email: String? = "", userName: String? = "") {
         loggyImpl.identity(userID, email, userName)
     }
 
-    override fun interceptException(onException: (exception: Throwable) -> Boolean) {
+    /**
+     * Intercept exceptions received by loggy.
+     */
+    @JvmStatic
+    fun interceptException(onException: (exception: Throwable) -> Boolean) {
         loggyImpl.interceptException(onException)
     }
 
-    override fun close() {
-        loggyImpl.close()
-    }
-
-    override fun status(): StateFlow<LoggyStatus> {
+    /**
+     * Loggy connection status
+     */
+    @JvmStatic
+    fun status(): StateFlow<LoggyStatus> {
         return loggyImpl.status()
     }
 
+    /**
+     * Send logs to loggy server
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun log(priority: Int, tag: String? = "", message: String, t: Throwable? = null) {
+        loggyImpl.log(priority, tag, message, t)
+    }
+
+    fun internalConfig(): LoggyInternalConfig {
+        return LoggyInternalConfig
+    }
 }
 
-private class LoggyImpl : LoggyInterface {
+private class LoggyImpl {
 
     private var retryAttempt = 1
     private var isInitialized = false
@@ -122,8 +141,8 @@ private class LoggyImpl : LoggyInterface {
     private lateinit var loggyContext: LoggyContextForAndroid
     private var status = MutableStateFlow(LoggyStatus.Initial)
 
-    override fun setup(application: Application, apiKey: String, hostUrl: String) {
-        mainScope.async {
+    fun setup(application: Application, apiKey: String, hostUrl: String) {
+        scope.async {
             //close any existing connection
             close()
 
@@ -195,7 +214,7 @@ private class LoggyImpl : LoggyInterface {
         }
     }
 
-    override fun close() {
+    fun close() {
         if (this::loggyClient.isInitialized) {
             SupportLogs.log("Closing Loggy")
             status.tryEmit(LoggyStatus.Disconnecting)
@@ -206,17 +225,17 @@ private class LoggyImpl : LoggyInterface {
         }
     }
 
-    override fun status(): StateFlow<LoggyStatus> {
+    fun status(): StateFlow<LoggyStatus> {
         return status
     }
 
-    override suspend fun loggyDeviceUrl(): String {
+    suspend fun loggyDeviceUrl(): String {
         return "${url.host}/d/" + loggyContext.getDeviceHash(
             loggyContext.getApplicationID(), loggyContext.getDeviceID()
         )
     }
 
-    override fun interceptException(onException: (exception: Throwable) -> Boolean) {
+    fun interceptException(onException: (exception: Throwable) -> Boolean) {
         onInterceptException = onException
     }
 

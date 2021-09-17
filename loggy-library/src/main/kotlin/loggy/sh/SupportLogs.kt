@@ -8,22 +8,20 @@ class SupportLogs {
 
     companion object {
 
-        private val enabled: Boolean = false
-
         fun log(message: String) {
-            if (enabled) {
+            if (LoggyInternalConfig.isLoggyDebuggingEnabled()) {
                 Log.d(LOGGY_TAG, message)
             }
         }
 
         fun error(message: String? = "", t: Throwable? = null) {
-            if (enabled) {
+            if (LoggyInternalConfig.isLoggyDebuggingEnabled()) {
                 Log.e(LOGGY_TAG, message, t)
             }
         }
 
         fun info(message: String) {
-            if (enabled) {
+            if (LoggyInternalConfig.isLoggyDebuggingEnabled()) {
                 Log.i(LOGGY_TAG, message)
             }
         }

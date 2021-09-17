@@ -31,6 +31,12 @@ class MainApplication : Application() {
             userName = "Ada Lovelace"
         )
 
+        Loggy.internalConfig().enableLoggyDebugging(false)
+
+        val h = HelloWorld()
+        h.helloWorld()
+
+
 //        Loggy.interceptException {
 //            Log.d("LoggyIntercept", "Failed", it)
 //            true
