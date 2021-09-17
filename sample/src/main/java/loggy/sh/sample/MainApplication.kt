@@ -22,16 +22,23 @@ class MainApplication : Application() {
     }
 
     fun setup() {
+//        Loggy.setup(
+//            this@MainApplication,
+//            apiKey = "4c5b3ba85d26402c895adaeb99c4c024",
+//
+//            )
+
         Loggy.setup(
             this@MainApplication,
-            apiKey = "4c5b3ba85d26402c895adaeb99c4c024",
+            apiKey = "c6101344ead14d6fa9e1840cbec13bc3",
+            hostUrl = "https://staging.loggy.sh"
         )
 
         Loggy.identity(
             userName = "Ada Lovelace"
         )
 
-        Loggy.internalConfig().enableLoggyDebugging(false)
+        Loggy.internalConfig().enableLoggyDebugging(true)
 
         val h = HelloWorld()
         h.helloWorld()
