@@ -98,7 +98,7 @@ class Hashids(
     }
 
     private fun guardIndex(numbersHash: Int, returnString: String, index: Int): Int =
-        (numbersHash + returnString.toCharArray()[index].toInt()) % finalGuards.length
+        (numbersHash + returnString.toCharArray()[index].code) % finalGuards.length
 
     /**
      * Encoded hex string to string
@@ -298,7 +298,7 @@ class Hashids(
             else -> {
                 val currentAlphabet = data.alphabet.toCharArray()
                 val saltReminder = data.saltReminder % data.salt.length
-                val asciiValue = data.salt[saltReminder].toInt()
+                val asciiValue = data.salt[saltReminder].code
                 val cumulativeValue = data.cumulative + asciiValue
                 val positionToSwap = (asciiValue + saltReminder + cumulativeValue) % currentPosition
                 currentAlphabet[positionToSwap] = currentAlphabet[currentPosition].also {
@@ -330,7 +330,7 @@ class Hashids(
             val last = hash(currentNumber, nextAlphabet)
 
             val newReturnString = if (currentIndex + 1 < numbers.size) {
-                val nextNumber = currentNumber % (last.toCharArray()[0].toInt() + currentIndex)
+                val nextNumber = currentNumber % (last.toCharArray()[0].code + currentIndex)
                 val sepsIndex = (nextNumber % separators.size).toInt()
                 currentReturnString + last + separators[sepsIndex]
             } else {
