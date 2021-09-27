@@ -291,7 +291,7 @@ private class LoggyImpl {
             .setMsg(msg)
             .setSessionid(sid)
             .setTimestamp(timestamp)
-            .build()
+            .buildPartial()
 
         if (loggyMessage.sessionid == -1) {
             holdMessageForNoSession(loggyMessage)

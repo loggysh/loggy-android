@@ -22,17 +22,17 @@ class MainApplication : Application() {
     }
 
     fun setup() {
-        Loggy.setup(
-            this@MainApplication,
-            apiKey = "4c5b3ba85d26402c895adaeb99c4c024",
-            )
-
 //        Loggy.setup(
 //            this@MainApplication,
-//            apiKey = "c6101344ead14d6fa9e1840cbec13bc3",
-//            hostUrl = "https://staging.loggy.sh"
-//        )
+//            apiKey = "4c5b3ba85d26402c895adaeb99c4c024",
+//            )
 
+        Loggy.setup(
+            this@MainApplication,
+            apiKey = "c6101344ead14d6fa9e1840cbec13bc3",
+            hostUrl = "https://staging.loggy.sh"
+        )
+//
 //        Loggy.setup(
 //            this@MainApplication,
 //            apiKey = "932c3201886b455f877ff66076b4e24f",
