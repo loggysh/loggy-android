@@ -142,6 +142,10 @@ private class LoggyImpl {
     private var status = MutableStateFlow(LoggyStatus.Initial)
 
     fun setup(application: Application, apiKey: String, hostUrl: String) {
+
+        loggyContext = LoggyContextForAndroid(application)
+        logRepository = LogRepository(application)
+
         scope.async {
             //close any existing connection
             close()
@@ -178,11 +182,8 @@ private class LoggyImpl {
 
                 checkLoggyStateChangePeriodically()
 
-                logRepository = LogRepository(application)
                 loggyService = LoggyServiceGrpcKt.LoggyServiceCoroutineStub(channel)
                 loggyClient = LoggyClient(application.sessionsDataStore, loggyService)
-
-                loggyContext = LoggyContextForAndroid(application)
 
                 scope.launch {
                     log(Log.INFO, LOGGY_TAG, "initializing...", null)
