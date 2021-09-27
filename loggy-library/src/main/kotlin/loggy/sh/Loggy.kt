@@ -146,7 +146,7 @@ private class LoggyImpl {
         loggyContext = LoggyContextForAndroid(application)
         logRepository = LogRepository(application)
 
-        scope.async {
+        scope.launch {
             //close any existing connection
             close()
 
@@ -174,6 +174,7 @@ private class LoggyImpl {
                 status.tryEmit(LoggyStatus.Connecting)
                 val port = 50111
                 SupportLogs.info("Connecting to ${url.host}:${port}")
+
                 channel = AndroidChannelBuilder.forAddress(url.host, port)
                     .context(application)
                     .usePlaintext()
